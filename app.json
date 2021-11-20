@@ -1,7 +1,7 @@
 {
-  "name": "Start on Heroku: Node.js",
-  "description": "A barebones Node.js app using Express 4",
-  "repository": "https://github.com/heroku/node-js-getting-started",
+  "name": "Knitout Image Processing",
+  "description": "A command-line program to process images and output knitting machine instructions for color work--written in CMU Textiles Lab's machine independent language, knitout.",
+  "repository": "https://github.com/gabrielle-ohlson/knitout-image-processing/",
   "logo": "https://cdn.rawgit.com/heroku/node-js-getting-started/main/public/node.svg",
   "keywords": ["node", "express", "heroku"],
   "image": "heroku/nodejs"
