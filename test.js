@@ -1,28 +1,48 @@
-const { spawn } = require('child_process');
-const got = require('got');
-const test = require('tape');
+const chalk = require('./public/src/utils/chalk');
 
-// Start the app
-const env = Object.assign({}, process.env, {PORT: 5000});
-const child = spawn('node', ['index.js'], {env});
+const {console, true_console_log} = require('./public/src/utils/webify');
 
-test('responds to requests', (t) => {
-  t.plan(4);
+let test = chalk.blue('hi');
 
-  // Wait until the server is ready
-  child.stdout.on('data', _ => {
-    // Make a request to our app
-    (async () => {
-      const response = await got('http://127.0.0.1:5000');
-      // stop the server
-      child.kill();
-      // No error
-      t.false(response.error);
-      // Successful response
-      t.equal(response.statusCode, 200);
-      // Assert content checks
-      t.notEqual(response.body.indexOf("<title>Node.js Getting Started on Heroku</title>"), -1);
-      t.notEqual(response.body.indexOf("Getting Started on Heroku with Node.js"), -1);
-    })();
-  });
-});
+let return_html = console.log(test);
+
+true_console_log(return_html);
+
+let test2 = chalk.green.bold('hi');
+
+return_html = console.log(test2);
+
+true_console_log(return_html);
+
+
+
+// console.log(test2);
+
+// const { spawn } = require('child_process');
+// const got = require('got');
+// const test = require('tape');
+
+// // Start the app
+// const env = Object.assign({}, process.env, {PORT: 5000});
+// const child = spawn('node', ['index.js'], {env});
+
+// test('responds to requests', (t) => {
+//   t.plan(4);
+
+//   // Wait until the server is ready
+//   child.stdout.on('data', _ => {
+//     // Make a request to our app
+//     (async () => {
+//       const response = await got('http://127.0.0.1:5000');
+//       // stop the server
+//       child.kill();
+//       // No error
+//       t.false(response.error);
+//       // Successful response
+//       t.equal(response.statusCode, 200);
+//       // Assert content checks
+//       t.notEqual(response.body.indexOf("<title>Node.js Getting Started on Heroku</title>"), -1);
+//       t.notEqual(response.body.indexOf("Getting Started on Heroku with Node.js"), -1);
+//     })();
+//   });
+// });

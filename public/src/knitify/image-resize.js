@@ -1,15 +1,16 @@
 const Jimp = require('jimp');
-const readlineSync = require('readline-sync');
-const chalk = require('chalk');
-const fs = require('fs');
+// const readlineSync = require('readline-sync');
+// const chalk = require('chalk');
+// const fs = require('fs');
 
-let img;
-let needle_count = 0;
-let row_count = 0;
+// let img;
+// let needle_count = 0;
+// let row_count = 0;
 
-let saveAnswers = false;
-let preloadFile, promptAnswers = {};
+// let saveAnswers = false;
+// let preloadFile, promptAnswers = {};
 
+/*
 readlineSync.setDefaultOptions({ prompt: chalk`{blue.italic (press Enter to skip and answer prompts) }{blue.bold Filename for pre-loaded prompt answers: }` }); //TODO: make option to skip this and only do stitch pattern
 readlineSync.promptLoop(function (input) {
 	if (input === '') { //if skipping
@@ -30,6 +31,41 @@ readlineSync.promptLoop(function (input) {
 		return /\.json$/i.test(input);
 	}
 });
+*/
+
+function processImage(img_buffer, needle_count, row_count) {
+	// img buffer
+	needle_count === 'AUTO' ? needle_count = Jimp.AUTO : needle_count = Number(needle_count);
+	row_count === 'AUTO' ? row_count = Jimp.AUTO : row_count = Number(row_count);
+
+	if (img_buffer) {
+		Jimp.read(img_buffer, (err, image) => {
+			if (err) throw err;
+			if (needle_count == -1 && row_count == -1) row_count = image.getHeight(); //if both auto (so Jimp doesn't throw an error)
+			image.resize(needle_count, row_count).write(colorwork_path);
+
+			return image;
+		});
+	} else { //if just stitch pattern
+		new Jimp(needle_count, row_count, (err, image) => {
+			if (err) throw err;
+			for (let y = 0; y < row_count; ++y) {
+				for (let x = 0; x < needle_count; ++x) {
+					image.setPixelColor(4294967295, x, y); //set it all as white
+				}
+			}
+			
+			return image;
+			// image.write('./out-colorwork-images/stitch.png'); //*
+		});
+	}
+}
+
+
+
+
+
+/*
 if (preloadFile) { //TODO: have option of still asking prompt in one of the keys is missing fom the preloaded file
 	console.log(chalk.green(`-- Reading prompt answers from: ${preloadFile}`));
 	promptAnswers = JSON.parse(fs.readFileSync('./prompt-answers/knitify/answers.json'));
@@ -131,3 +167,4 @@ if (img) {
 		image.write('./out-colorwork-images/stitch.png'); //*
 	});
 }
+*/

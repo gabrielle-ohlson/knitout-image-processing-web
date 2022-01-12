@@ -10,3 +10,8 @@ npm-debug.log
 # Docker
 Dockerfile
 docker-compose.yml
+
+ignore/
+
+
+public/images/out-colorwork-images/*.png

@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<%- include ("../partials/header.ejs") %>
+	<link rel="stylesheet" type="text/css" href="/stylesheets/knitify.css" />
+</head>
+
+<body>
+
+
+	<div>
+		<h2>Output Knitout</h2>
+		<a id="outFileHolder" class="file download" href="#" download="colorwork.k">
+		<div id="outFileName"></div>
+		<div id="knitout" style="display:none"><%=knitout%></div>
+		</a>
+	</div>	
+
+</body>
+</html>
+
+<script>
+	let knitoutText = document.getElementById('knitout').innerText;
+
+	console.log(knitoutText)
+	document.getElementById('outFileHolder').href = URL.createObjectURL(new Blob([knitoutText]));
+</script>

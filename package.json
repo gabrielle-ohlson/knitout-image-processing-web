@@ -5,9 +5,9 @@
   "engines": {
     "node": ">=11.15.0"
   },
-  "main": "index.js",
+  "main": "app.js",
   "scripts": {
-    "start": "node index.js",
+    "start": "node app.js",
     "shapeify": "node shape-cropper.js && node shape-writer.js && node shape-processor.js && node shapeify.js",
     "knitify": "node image-resize.js && node knitify.js",
     "debug": "node image-resize.js && node knitify.js"

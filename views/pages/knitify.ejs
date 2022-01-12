@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<%- include ("../partials/header.ejs") %>
+	<link rel="stylesheet" type="text/css" href="/stylesheets/knitify.css" />
+</head>
+
+<body>
+	<%- include ("../partials/knitify-nav.ejs") %>
+	<p id="explaination">
+	This is a web version of the <a href="https://github.com/textiles-lab/knitout-backend-kniterate/">knitout-backend-kniterate</a> code developed by the <a href="https://textiles-lab.github.io/">Carnegie Mellon Textiles Lab</a>.<br>
+	<a class="markedLink" href="https://github.com/textiles-lab/knitout-backend-kniterate/issues">Report bugs</a>.
+	<a class="markedLink" href="https://github.com/textiles-lab/knitout-backend-kniterate/">Get source code</a> (also includes a command-line version).
+	</p>
+	<main>
+		<form ref="uploadForm" id="uploadForm" method="post" action="/download" encType="multipart/form-data">
+			<div>
+				<div id="colorworkImage" style="display:block">
+					<h2>Colorwork Image</h2>
+					<label for="colFile" class="file load empty" id="colInFileHolder">
+						<input type="file" id="colFile" name="colFile" value="" style="display:none">
+						<div id="colFileName"></div>
+					</label>
+					<p>
+					<a href="https://github.com/textiles-lab/knitout">Knitout</a> (<code>.k</code> or <code>.knitout</code>) is an instruction-oriented and portable knitting machine language.
+					</p>
+				</div>
+				<div id="stitchImage" style="display:none">
+					<h2 id="inFileHeader">Stitch Pattern Image</h2>
+					<label for="stFileInput" class="file load empty" id="stInFileHolder">
+						<input type="file" id="stFileInput" name="stFileInput" style="display:none">
+						<div id="inFileName"></div>
+					</label>
+					<p>
+						<a href="https://github.com/textiles-lab/knitout">Knitout</a> (<code>.k</code> or <code>.knitout</code>) is an instruction-oriented and portable knitting machine language.
+					</p>
+				</div>
+			</div>
+			<table id="specs-table">
+				<tr id="columns">
+					<td></td>
+				</tr>
+			</table>
+			<input id="submit-button" type="submit" value="Submit!" />
+		</form>	
+	</main>
+	
+	<div>
+	<h2 id="messagesHeader">Messages</h2>
+	<ul id="messages">
+		<li class="info">(none yet)</li>
+		<!--
+		<li class="log">Messages from a console.log command end up looking like this text here looks</li>
+		<li class="info">Messages from a console.info command end up looking like this text here looks</li>
+		<li class="warn">Messages from a console.warn command end up looking like this text here looks</li>
+		<li class="error">Messages from a console.error command end up looking like this text here looks</li>
+		<li class="assert">Messages from a console.assert command end up looking like this text here looks</li>
+		-->
+	</ul>
+	</div>
+	
+	<div id="dropTarget"></div>
+
+	<script>
+		let colorwork_img, needle_count = 'AUTO', row_count = 'AUTO', machine = 'kniterate', max_colors, dithering = false, palette_opt, stitch_number, speed_number, caston_carrier, wasteSettings, back_style = 'Secure', rib_info, st_pat_img, stitchPatterns = [];
+
+		let colFileInput = document.getElementById('colFile');
+		let inFileHeader = document.getElementById('inFileHeader');
+
+		let colFile = colFileInput.files[0];
+
+		let colorworkImageDiv = document.getElementById('colorworkImage');
+		let colInFileHolder = document.getElementById('colInFileHolder');
+
+
+		function readFile(file) {
+			let reader = new FileReader();
+			reader.onload = function() {
+				console.log(this.result);
+				return this.result;
+			}
+
+			reader.readAsArrayBuffer(file);
+		}
+
+		colFileInput.addEventListener('change', (evt) => {
+			let colorwork_img = colFileInput.files[0];
+
+			let imgNode = document.createElement('img');
+
+			imgNode.src = URL.createObjectURL(colorwork_img);
+			
+			console.log('imgNode:', imgNode.src); //remove //debug
+			readFile(colorwork_img);
+
+			// let buffer_file = readFile(colFileInput.files[0]);
+			// colFileInput.value = ''; //make it so that reloading file does properly reload file
+			// colFileInput.value = buffer_file; //make it so that reloading file does properly reload file
+
+			// myAnchor.parentNode.replaceChild(mySpan, myAnchor);
+			// console.log(colFileInput.value);
+
+			colorworkImageDiv.replaceChild(imgNode, colInFileHolder);
+
+			// document.getElementById('colImgContainer').innerHTML = imgNode;
+
+			// console.log(colFileInput.value);
+			evt.preventDefault();
+			return false;
+		});
+
+		// colFileInput.addEventListener('change', (evt) => {
+		// 	let colorwork_img = colFileInput.files[0];
+
+		// 	readFile(colorwork_img);
+		// 	// inFileInput.value = ''; //make it so that reloading file does properly reload file
+
+		// 	let imgNode = document.createElement('img');
+
+		// 	imgNode.src = URL.createObjectURL(colorwork_img);
+
+		// 	document.getElementById('colImgContainer').innerHTML = imgNode;
+		// 	// let urlCreator = window.URL || window.webkitURL;
+
+		// 	// let imageUrl = urlCreator.createObjectURL(this.response);
+   	// 	// document.querySelector("#image").src = imageUrl;
+
+		// 	evt.preventDefault();
+		// 	return false;
+		// });
+
+		let carriers = ['1', '2', '3']; //TODO: change this
+
+		let stitch_pat_cols = 3;
+
+		let stitch_pat_opts = ['Rib', 'Garter', 'Bubbles', 'Seed', 'Lace', 'Horizontal Buttonholes'];
+		let patCustomizations = {
+			'rib': {'front sequence': 1, 'back sequence': 1}, //TODO: add option for default
+			'garter': {'pattern rows': 2},
+			'bubbles': {'bubble width': 5, 'bubble height': 8, 'overlap width': 1},
+			'lace': {'pattern rows': 2, 'stitches btw holes': 1, 'hole offset': 1, 'offset reset': 0}
+
+		};
+
+
+		
+
+
+		function labelToTag(label) {
+			return label.toLowerCase().replace(/ /g, '-');
+		}
+
+		function dropDownChangeListener(listen_to, to_change, new_content) {
+			if (listen_to) {
+				listen_to.addEventListener('change', function() {
+					to_change.innerHTML = new_content;
+					// to_change.innerHTML = createDropdown(patCustomizations[el.value], 'Customizations');
+				});
+			}
+		}
+
+		function createDropdown(opts, default_label) {
+			if (!opts) return; //new //*
+			let dropDownHtml = '';
+			// if (typeof opts[0] === 'object') dropDownHtml += `<div display="grid">`;
+			let opts_arr = opts;
+			if (!Array.isArray(opts)) {
+				dropDownHtml += `<div display="grid">`;
+				opts_arr = Object.keys(opts);
+			}
+
+			dropDownHtml += `<form action="#">`;
+			// let dropDownHtml = `<div class="dropdown" action="#"><a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false"><span class="glyphicon glyphicon-info-sign"></span> Stitch Patterns <span class="caret"></span></a><ul class="dropdown-menu" role="menu">`;
+			// if (default_label) dropDownHtml += `<label for="${labelToTag(default_label)}">${default_label}</label>`;
+			// else default_label = opts[0];
+			dropDownHtml += `<select name="${labelToTag(default_label)}" class="${labelToTag(default_label)}">`; //size="4"
+			// let dropDownHtml = `<div class='dropdown'><a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false"><span class="glyphicon glyphicon-info-sign"></span> Stitch Patterns <span class="caret"></span></a><ul class="dropdown-menu" role="menu">`;
+
+			// for (let i = 0; i < opts.length; ++i) {
+			for (let opt of opts_arr) {
+				// let default_value;
+				dropDownHtml += `<option value="${labelToTag(opt)}"><button>${opt}</button></option>`;
+				// let label = (typeof opts[i] === 'object' ? opts[i][0] : opts[i]);
+				// if (typeof opts[i] === 'object') {
+				// 	dropDownHtml += `<option><label for "${labelToTag(opts[i][0])}">${opts[i][0]}:"</label><input type="text" id="${labelToTag(opts[i][0])}" name="${labelToTag(opts[i][0])}" value="${opts[i][1]}" /></option>`;
+				// } else dropDownHtml += `<option value="${labelToTag(opts[i])}">${opts[i]}</option>`;
+				// dropDownHtml += `<option value="${labelToTag(label)}"><button>${label}</button></option>`;
+				// dropDownHtml += `<li><button>${opts[i]}</button></li>`
+			}
+
+			dropDownHtml += `</select></form>`; // <input type="submit" value="Submit" />
+
+			if (!Array.isArray(opts)) {
+				let opt1 = Object.entries(opts)[0];
+				dropDownHtml += `<div class="input-value"><input size="1" type="text" id="${labelToTag(opt1[0])}" name="${labelToTag(opt1[0])}" value="${opt1[1]}" /></div></div>`
+			}
+			// dropDownHtml += `</select></ul></div>`;
+
+			return dropDownHtml;
+		}
+
+		function specify(opt) {
+			let table = document.getElementById('specs-table');
+			let colHeader = document.getElementById('columns');
+			let columns = {}, row_labels = [];
+
+			if (opt === 'Stitch Patterns') {
+				// col_labels.push('Stitch Pattern Name', 'Mapped Color', 'Carrier', 'Customizations');
+
+				columns['Stitch Pattern Name'] = createDropdown(stitch_pat_opts, 'Stitch Pattern Name');
+
+				columns['Mapped Color'] = `<input type='text' class='mapped-color' name='mapped-color' />`;
+
+				columns['Carrier'] = createDropdown(carriers, 'Carrier');
+
+				columns['Customizations'] = function() {
+					let stitchPatCols = document.querySelectorAll('input.mapped-color');
+					let stitchPatCarriers = document.querySelectorAll('select.carrier');
+
+					for (let i = 0; i < stitchPatCols.length; ++i) {
+						stitchPatCols[i].name = `mapped-color-${i+1}`;
+					}
+
+					for (let i = 0; i < stitchPatCarriers.length; ++i) {
+						stitchPatCarriers[i].name = `carrier-${i+1}`;
+					}
+
+					let stitchPatNames = document.querySelectorAll('select.stitch-pattern-name');
+
+					if (stitchPatNames) {
+						let spIdx = 1;
+						stitchPatNames.forEach((el) => {
+							el.name = `stitch-pattern-name-${spIdx}`;
+							
+							let row_parent = el.closest('tr');
+
+							el.addEventListener('change', function() {
+								row_parent.querySelector('div.customizations').innerHTML = createDropdown(patCustomizations[el.value], 'customizations-table');
+
+								let customTable = row_parent.querySelector('select.customizations-table');
+
+								customTable.name = `customizations-table-${spIdx}`;
+
+								let customInput = row_parent.querySelector('div.input-value > input');
+								
+								customInput.addEventListener('change', function() {
+									patCustomizations[el.value][customTable.value.replace(/-/g, ' ')] = Number(customInput.value);
+								});
+
+								customTable.addEventListener('change', function() {
+									// el.querySelector('.input-value').innerHTML = `<input type="text" value="${patCustomizations[customTable.querySelector('select').value]} />`;
+									customInput.id = `${customTable.value}`;
+									customInput.value= `${patCustomizations[el.value][customTable.value.replace(/-/g, ' ')]}`;
+
+									// row_parent.querySelector('.input-value').innerHTML = `<input size="1" type="text" id="${customTable.value}" value="${patCustomizations[el.value][customTable.value.replace(/-/g, ' ')]}" />`;
+									// to_change.innerHTML = createDropdown(patCustomizations[el.value], 'Customizations');
+								});
+							});
+							spIdx += 1;
+						});
+
+					}
+					
+				}; //will be updated if something is selected
+
+				if (stitch_pat_cols) {
+					for (let i = 1; i <= stitch_pat_cols; ++i) {
+						row_labels.push(`Stitch Pattern #${i}:`);
+					}
+				}
+				// document.getElementById('specs').innerHTML = `<div>stitch specs</div>`;
+			}
+
+			// for (let c = 0; c < col_labels.length; ++c) {
+			let c = 1;
+			for (let col in columns) {
+				let column = colHeader.insertCell(c);
+				column.id = labelToTag(col);
+				column.innerHTML = `<b>${col}</b>`;
+				c += 1;
+			}
+
+			let cells = {};
+			for (let r = 0; r < row_labels.length; ++r) {
+				cells[r] = [];
+
+				let row = table.insertRow(r+1);
+				cells[r].push(row.insertCell(0));
+				cells[r][0].innerHTML = row_labels[r];
+				c = 1;
+				for (let col in columns) {
+					cells[r].push(row.insertCell(c));
+					cells[r][c].classList.add(`${labelToTag(col)}`);
+					if (typeof columns[col] === 'function') {
+						// cells[r][c].innerHTML  = `<div id="${labelToTag(col)}-${c-1}"></div>`;
+						cells[r][c].innerHTML  = `<div class="${labelToTag(col)}"></div>`;
+						columns[col]();
+					} else cells[r][c].innerHTML = columns[col];
+					// cells[c].innerHTML = `<input type='text' />`
+					c += 1;
+				}
+			}
+
+
+		}
+
+
+		document.getElementById('stitch-patterns').addEventListener('click', function() {
+			if (!st_pat_img) {
+
+			}
+		})
+
+		document.querySelectorAll('.option').forEach(function(el) {
+			el.addEventListener('click', specify(el.innerText));
+		});
+
+		function saveData() {
+
+		}
+
+		function colorworkKnitout() {
+			saveData();
+
+			/*
+			Colorwork Image:
+			- colorwork_img,
+			- back_style,
+			- needle_count,
+			- row_count,
+			- max_colors,
+			- dithering,
+			- palette_opt
+
+			Extensions & Specs:
+			- machine,
+			- stitch_number,
+			- speed_number,
+			- caston_carrier
+			- wasteSettings
+
+			Rib:
+			- rib_info
+
+			Stitch Patterns:
+			- st_pat_img
+			- stitchPatterns
+
+			*/
+				
+					
+				
+			// console.log('!', colFileInput.files[0]);
+			
+			// function process(img_buffer, needle_count, row_count, machine, max_colors, dithering, palette_opt, stitch_number, speed_number, caston_carrier, wasteSettings, back_style, rib_info, stImg, stitchPats)
+
+			// console.log(colorwork_knitout);
+		}
+
+		// let submitButton = document.getElementById('submit-button');
+
+		// submitButton.addEventListener('click', colorworkKnitout);
+
+	</script>
+</html>

@@ -232,7 +232,7 @@ function getData() {
 				}
 				fs.writeFileSync('colorsData.txt', colorsDataFile);
 
-				colors_arr.push(palette, machine, background, colors_data);
+				colors_arr.push(palette, background, colors_data, machine);
 				img.write(motif_path);
 				resolve(colors_arr);
 			});

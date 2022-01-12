@@ -1,16 +1,19 @@
 const fs = require('fs');
-const readlineSync = require('readline-sync');
-const chalk = require('chalk');
+// const readlineSync = require('readline-sync');
+// const chalk = require('chalk');
 const Jimp = require('jimp');
 const RgbQuant = require('rgbquant');
 
 
+/*
 //--- define some variables ---
 let stImg, stitchPixels;
 let stPatOpts = ['Rib', 'Garter', 'Bubbles', 'Seed', 'Lace', 'Horizontal Buttonholes']; //TODO: add more
 let customStPat = ['Rib', 'Garter', 'Bubbles', 'Lace']; //new //*
 let stPatNullCarrier = ['Horizontal Buttonholes']; //new //*
+
 let stitchPatterns = [];
+
 class StitchPattern {
 	constructor(name, hex, carrier) {
 		this.name = name;
@@ -40,9 +43,10 @@ let hexColors = {
 let carrierColors = fs.readFileSync('colorsData.txt', 'utf8');
 
 fs.unlinkSync('colorsData.txt');
+*/
 
-// if (fs.existsSync('./out-colorwork-images/pattern_motif.png')) fs.unlinkSync('./out-colorwork-images/pattern_motif.png'); //remove
 
+/*
 //--- get stitch pattern img file path ---
 console.log(chalk`{white.bold NOTE: image should only include a white background and the colors denoting stitch patterns.}`);
 readlineSync.setDefaultOptions({ prompt: chalk`{blue.italic \n(press Enter to skip if using only *one* stitch pattern that *comprises the whole piece*) }{blue.bold Stitch pattern image file: }` });
@@ -73,15 +77,7 @@ while (!stopPrompt) {
 	let options = [...patOpts],
 		choice = readlineSync.keyInSelect(options, chalk.blue.bold(`^Select a stitch pattern to use in your motif.`));
 	choice = stPatOpts[choice];
-	// if (choice === 'Rib') {
-	// 	let rib_f = readlineSync.questionInt(chalk.blue.bold(`\nHow many front needles in sequence? (e.g. '2') `));
-	// 	let rib_b = readlineSync.questionInt(chalk.blue.bold(`\nHow many back needles in sequence? (e.g. '2') `));
 
-	// 	choice = `Rib ${rib_f}x${rib_b}`;
-	// 	// let ribOptions = ['1x1', '2x2'],
-	// 	// 	ribChoice = readlineSync.keyInSelect(ribOptions, chalk.blue.bold(`^Which type of rib? `));
-	// 	// choice = `Rib ${ribOptions[ribChoice]}`;
-	// }
 	console.log(chalk.green('-- Using pattern: ' + choice));
 	stitchPatterns.push(new StitchPattern(choice));
 	if (stImg) {
@@ -141,7 +137,7 @@ for (let i = 0; i < stitchPatterns.length; ++i) {
 			console.log(chalk.green('-- Carrier: ' + stitchPatterns[i].carrier));
 		}
 	} else stitchPatterns[i].carrier = (stPatNullCarrier.includes(stitchPatterns[i].name) ? (null) : (1)); //only one stitchPattern, so will be 1 automatically (or null, if applicable) //new //*
-	// if (stitchPatterns[i].name === 'Bubbles' || stitchPatterns[i].name === 'Lace' || stitchPatterns[i].name === 'Garter') {
+
 	if (customStPat.includes(stitchPatterns[i].name)) { //new //*
 		if (readlineSync.keyInYNStrict(chalk.blue.bold(`\nWould you like to add any other customizations for the '${stitchPatterns[i].name}' stitch pattern?`))) {
 			if (stitchPatterns[i].name === 'Bubbles') {
@@ -161,25 +157,27 @@ for (let i = 0; i < stitchPatterns.length; ++i) {
 				stitchPatterns[i].options.patternRows = Number(readlineSync.questionInt(chalk.blue.bold(`\nHow many garter rows (switching between knits and purls)? `)));
 			} else if (stitchPatterns[i].name === 'Rib') {
 				let frontWidth = Number(readlineSync.questionInt(chalk.blue.bold(`\nHow many front needles in sequence? (e.g. '2'): `)));
-				// stitchPatterns[i].options.frontWidth = 'f'.repeat(rib_f);
 				let backWidth = Number(readlineSync.questionInt(chalk.blue.bold(`\nHow many back needles in sequence? (e.g. '2'): `)));
-				// stitchPatterns[i].options.backWidth = 'b'.repeat(rib_b);
 				stitchPatterns[i].options.sequence = 'f'.repeat(frontWidth) + 'b'.repeat(backWidth);
 			}
 		} else stitchPatterns[i].options = undefined;
 	} else stitchPatterns[i].options = undefined;
 }
+*/
+
+
+
+
 
 //--- get motif size & then resize pattern img accordingly ---
-let width, height, data;
-// let leftN = 1, rightN;
 
-let stPatMap = [];
+function getStitchData(stImg, stitchPatterns) {
+	let width, height, data;
 
-// console.log('stitchPatterns:', stitchPatterns); //remove //debug
-// console.log('stPatMap:', stPatMap); //remove //debug
+	let stPatMap = [];
 
-function getStitchData() {
+	let palette, reduced;
+	let pal_hist = [];
 	const processImage = new Promise((resolve) => {
 		Jimp.read(`./out-colorwork-images/colorwork.png`).then(image => {
 			width = image.bitmap.width;
@@ -208,7 +206,7 @@ function getStitchData() {
 				resolve(stPatMap);
 				return stPatMap;
 			} else {
-				Jimp.read(`./in-stitch-pattern-images/${stImg}`).then(image => { //TODO: edit this with option of 'Enter' for stitch pattern
+				Jimp.read(stImg).then(image => { //TODO: edit this with option of 'Enter' for stitch pattern
 					image.resize(width, height, (err, image) => {
 						data = image.bitmap.data;
 						let opts = {
@@ -233,7 +231,7 @@ function getStitchData() {
 						palette = q.palette(true, true);
 		
 						reduced = q.reduce(data, 2); ////indexed array
-						stitchPixels = [...reduced];
+						// let stitchPixels = [...reduced];
 		
 						let hex_arr = [Jimp.rgbaToInt(palette[0][0], palette[0][1], palette[0][2], 255)]; //background color
 						for (let h = 1; h < palette.length; ++h) {
@@ -313,7 +311,7 @@ function getStitchData() {
 							}
 						} //^
 
-						image.write(`./out-colorwork-images/pattern_motif.png`);
+						image.write('../../images/out-colorwork-images/pattern_motif.png'); //TODO: change //?
 						resolve(stPatMap);
 						return stPatMap;
 					});

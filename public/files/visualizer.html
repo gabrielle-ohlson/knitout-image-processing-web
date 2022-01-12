@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<style>
+			body {
+				margin: 0;
+				padding: 0;
+			}
+
+			#file-container {
+				position: relative;
+			}
+
+			#visualizer {
+				width: 100%;
+				height:100%;
+				/* position: fixed; */
+			}
+/* 
+				#inFileHolder:after {
+					content:'(click to load a different file)';
+					font-size:75%;
+					color:#333;
+				}
+
+				#inFileHolder.empty:after {
+					content:'Click to load a file (or drag one into the window)';
+					font-size:80%;
+				} */
+		</style>
+	</head>
+	<body>
+		<div id="file-container">
+			<button type="button">
+				<label for="inFileInput" class="file load empty" id="inFileHolder">Click to load a knitout file.</label>
+			</button>
+			<input type="file" id="inFileInput" style="display:none">
+			<!-- <div id="inFileName"></div> -->
+		</div>
+
+		<canvas id="visualizer"></canvas>
+		<script>
+			const fileContainer = document.getElementById('file-container');
+			const inFileInput = document.getElementById('inFileInput');
+			
+			let knitoutLines = [];
+
+			//file loading modified from knitout-live-visualizer:
+			function readFile(file) {
+				console.log("Attempting to read file: '" + file.name + "'.");
+
+				// //setup UI for new file:
+				// setInFile(file.name, '');
+				// clearMessages();
+				// addMessage('info', `Processing '${file.name}'...`);
+				// clearOutFile();
+
+				//generate new data:
+				let reader = new FileReader();
+				reader.onload = function(){
+					//document.getElementById('fileName').innerText = file.name;
+					console.log("read " + file.name);
+					let text = reader.result;
+					let oldText = text;
+					//line ending conversion:
+					text = text.replace(/\r\n/g,"\n");
+					if (oldText != text) {
+						console.warn("Converted dos-style line endings to unix-style.");
+					}
+
+					knitoutLines = text.split('\n');
+					console.log(knitoutLines); //remove
+
+					parseKnitout(knitoutLines);
+					// processKnitout(file.name, reader.result);
+				};
+				console.log("reading " + file.name + ".");
+				reader.readAsText(file);
+
+			}
+
+			inFileInput.addEventListener('change', (evt) => {
+				readFile(inFileInput.files[0]);
+
+				fileContainer.style.display = 'none';
+				// inFileInput.value = ''; //make it so that reloading file does properly reload file
+				// evt.preventDefault();
+				// return false;
+				// parseKnitout(knitoutLines);
+			});
+
+			let passes = [], pass = [];
+			let min = Infinity, max = -Infinity;
+			let bedWidth;
+			let fLeftN, fRightN, bLeftN, bRightN;
+			let frontNeedles = [], backNeedles = [];
+
+			let currentDir; //it's a new pass if there's a change in: dir, rack, or op == xfer and prevOp wasn't xfer (?)
+			let previousOp, previousNeedle; 
+
+			function createNewPass(dir) {
+				if (dir) {
+					if (!currentDir) currentDir = dir;
+					else if (dir !== currentDir) {
+						passes.push(pass);
+						pass = []; //check to make sure this is good
+					}
+				} else {
+					passes.push(pass);
+					pass = []; //check to make sure this is good
+				}
+			}
+
+			function extractNeedleNumber(str) {
+				return Number(str.slice(1));
+			}
+
+			function parseKnitout(knitout) {
+				console.log('knitout:', knitout); //remove
+
+				for (let i = 0; i < knitout.length; ++i) {
+					let info = knitout[i].split(' ');
+					let op = info[0];
+					if (op == 'knit' || op === 'tuck') { //TODO: maybe separate into different passes if previously, knit on front & then tuck on front & vice versa (staying true to kniterate (?))
+						let bed = info[2].charAt(0);
+						let needleNum = extractNeedleNumber(info[2]);
+						previousNeedle = needleNum;
+						let dir = info[1];
+
+						if (bed === 'f' && !frontNeedles.includes(needleNum)) frontNeedles.push(needleNum);
+						else if (bed === 'b' && !backNeedles.includes(needleNum)) backNeedles.push(needleNum); //TODO: sort these
+
+						if (needleNum < min) {
+							min = needleNum;
+							if (bed === 'f') fLeftN = needleNum;
+							else bLeftN = needleNum;
+						} else if (fLeftN === undefined || bLeftN === undefined) {
+							if (bed === 'f') fLeftN = needleNum;
+							else bLeftN = needleNum;
+						}
+
+						if (needleNum > max) {
+							max = needleNum;
+							if (bed === 'f') fRightN = needleNum;
+							else bRightN = needleNum;
+						} else if (fRightN === undefined || bRightN === undefined) {
+							if (bed === 'f') fRightN = needleNum;
+							else bRightN = needleNum;
+						}
+
+						createNewPass(dir);
+						
+					} else if (op === 'split') {
+						let dir = info[1];
+
+						createNewPass(dir);
+					} else if ((op === 'rack') || (op === 'xfer' && previousOp !== 'xfer')) createNewPass();
+
+					if (op === 'xfer' || op === 'drop') {
+						previousNeedle = extractNeedleNumber(info[1]);
+						if (bed === 'f' && !frontNeedles.includes(previousNeedle)) frontNeedles.push(previousNeedle);
+						else if (bed === 'b' && !backNeedles.includes(previousNeedle)) backNeedles.push(previousNeedle); //TODO: sort these
+					} if (!op.includes(';') && !op.includes('x-') && op !== 'pause') { //TODO: confirm that these are the only things to skip
+						pass.push(knitout[i]);
+						previousOp = op;
+					}
+				}
+
+				bedWidth = max-min+1;
+
+				console.log('bedWidth:', bedWidth); 
+				
+				drawNeedles(bedWidth); //remove
+			}
+
+
+			// // function getKnitout() {
+			// let url = 'http://localhost:8080/visualizer';
+			// fetch(url).then(response => response.json())
+			// .then((result) => {
+			// 	console.log('!', result); //remove
+			// 	knitout = result.split('\n');
+			// 	console.log(knitout); //remove
+			// })
+			// .catch(error => console.log('error:', error));
+			// // }
+
+			const canvas = document.getElementById('visualizer');
+			const ctx = canvas.getContext('2d');
+
+			// const width = canvas.clientWidth;
+			const width = canvas.width;
+			const height = canvas.height;
+
+			const centerX = width/2;
+			const centerY = height/2;
+
+			function drawNeedles(needleCount) {
+				let needleWidth = (width/(needleCount+((needleCount+1)/2)))/2;
+				// let radius = needleWidth/2;
+				let radius = needleWidth/2;
+				// let radius = width/(needleCount+((needleCount+1)/2));
+				let spaceBtw = 3*needleWidth;
+
+				console.log(radius);
+				
+				// let xPos = needleWidth; //starting point
+				// let xPos = needleWidth+radius; //starting point
+				// let xPos = spaceBtw-needleWidth; //starting point
+
+				function drawNeedleBed(yPos, leftN, rightN, arr) {
+					let xPos = spaceBtw-needleWidth; //starting point
+
+					for (let i = leftN; i <= rightN; ++i) {
+					// for (let i = 0; i < needleCount; ++i) {
+						if (arr.includes(i)) {
+							ctx.beginPath();
+							ctx.arc(xPos, yPos, radius, 0, 2*Math.PI);
+							ctx.stroke();
+
+							// xPos += 3*needleWidth;
+							xPos += spaceBtw;
+							// xPos += 2*needleWidth;
+							// xPos += 3*radius;
+						// } else xPos += (2*spaceBtw)+needleWidth;
+					} else xPos += (spaceBtw)+needleWidth;
+					}
+				}
+
+				console.log(fLeftN, fRightN, bLeftN, bRightN);
+				console.log(frontNeedles);
+				console.log(backNeedles);
+				drawNeedleBed(centerY, fLeftN, fRightN, frontNeedles);
+				drawNeedleBed((centerY+needleWidth), bLeftN, bRightN, backNeedles);
+			}
+
+			function drawYarn() {
+				// ctx.beginPath();
+				// ctx.moveTo(centerX, centerY);
+				// ctx.lineTo(centerX, 1.5*centerY);
+				// ctx.lineTo(1.5*centerX, 1.5*centerY);
+				// ctx.closePath();
+				// ctx.stroke();
+				// ctx.fill();
+			}
+
+			function rack() {
+				
+			}
+
+			// function visualizePass(passesArr) {
+			// 	for (let i = 0; i < passesArr.length; ++i) {
+			// 		let passArr = passesArr[i];
+			// 		let dir;
+			// 		for (let o = 0; o < passArr.length; ++o) {
+			// 			let info = passArr[o].split(' ');
+			// 			if (info.length > 1) {
+			// 				if (info[1] === '+' || info[1] === '-') 
+			// 			}
+			// 		}
+			// 	}
+			// }
+			drawYarn();
+
+		</script>
+	</body>
+</html>
