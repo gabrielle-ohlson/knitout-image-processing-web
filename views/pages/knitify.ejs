@@ -3,32 +3,59 @@
 <head>
 	<%- include ("../partials/header.ejs") %>
 	<link rel="stylesheet" type="text/css" href="/stylesheets/knitify.css" />
+
+	<style>
+
+		label {
+			position: relative;
+		}
+
+		.bi-info-circle-fill {
+			position: absolute;
+			right: 100%;
+			color: grey;
+			top: 50%;
+			transform: translate(0, -50%);
+			margin-right: 10px;
+			cursor: pointer;
+		}
+	</style>
 </head>
 
 <body>
 	<%- include ("../partials/knitify-nav.ejs") %>
 	<p id="explaination">
-	This is a web version of the <a href="https://github.com/textiles-lab/knitout-backend-kniterate/">knitout-backend-kniterate</a> code developed by the <a href="https://textiles-lab.github.io/">Carnegie Mellon Textiles Lab</a>.<br>
-	<a class="markedLink" href="https://github.com/textiles-lab/knitout-backend-kniterate/issues">Report bugs</a>.
-	<a class="markedLink" href="https://github.com/textiles-lab/knitout-backend-kniterate/">Get source code</a> (also includes a command-line version).
+	This is a web version of the <a href="https://github.com/textiles-lab/knitout/">knitout</a> image processing program developed by <a href="https://edgygrandma.com/">Gabrielle Ohlson</a> for use on the <a href="https://kniterate.com/">Kniterate</a> knitting machine.<br>
+	<a class="markedLink" href="https://github.com/gabrielle-ohlson/knitout-image-processing/issues">Report bugs</a>.
+	<a class="markedLink" href="https://github.com/gabrielle-ohlson/knitout-image-processing/">Get source code</a> (also includes a command-line version).
 	</p>
 	<main>
 		<form ref="uploadForm" id="uploadForm" method="post" action="/download" encType="multipart/form-data">
 			<div>
-				<div id="colorworkImage" style="display:block">
+				<div id="colorworkImage" class="imgContainer" style="display:block">
 					<h2>Colorwork Image</h2>
 					<label for="colFile" class="file load empty" id="colInFileHolder">
-						<input type="file" id="colFile" name="colFile" value="" style="display:none">
-						<div id="colFileName"></div>
+						<input type="file" class="fileInput" id="colFile" name="colFile" value="" style="display:none">
+						<div id="inFileName"></div> <!-- TODO: add this (also probably class instead ?) -->
 					</label>
 					<p>
 					<a href="https://github.com/textiles-lab/knitout">Knitout</a> (<code>.k</code> or <code>.knitout</code>) is an instruction-oriented and portable knitting machine language.
 					</p>
 				</div>
-				<div id="stitchImage" style="display:none">
-					<h2 id="inFileHeader">Stitch Pattern Image</h2>
-					<label for="stFileInput" class="file load empty" id="stInFileHolder">
-						<input type="file" id="stFileInput" name="stFileInput" style="display:none">
+				<div id="shapeImage" class="imgContainer" style="display:none">
+					<h2>Shape Image</h2>
+					<label for="shapeFile" class="file load empty" id="shapeInFileHolder">
+						<input type="file" class="fileInput" id="shapeFile" name="shapeFile" style="display:none">
+						<div id="inFileName"></div>
+					</label>
+					<p>
+						<a href="https://github.com/textiles-lab/knitout">Knitout</a> (<code>.k</code> or <code>.knitout</code>) is an instruction-oriented and portable knitting machine language.
+					</p>
+				</div>
+				<div id="stitchImage" class="imgContainer" style="display:none">
+					<h2>Stitch Pattern Image</h2>
+					<label for="stFile" class="file load empty" id="stInFileHolder">
+						<input type="file" class="fileInput" id="stFile" name="stFile" style="display:none">
 						<div id="inFileName"></div>
 					</label>
 					<p>
@@ -36,98 +63,269 @@
 					</p>
 				</div>
 			</div>
-			<table id="specs-table">
-				<tr id="columns">
-					<td></td>
-				</tr>
-			</table>
+			<div class="specs" id="col-specs" style="display:block">
+				<label id="MaxColorsLabel" for="MaxColors">Max colors:</label>
+				<input type="number" min="1" max="6" oninput="validity.valid||(value='');" onchange="adjustPalSize(this.value)" id="MaxColors" name="MaxColors" step=1 size=6 value=2 />
+				<br>
+				<label id="PaletteLabel" for="Palette">Palette:</label>
+				<span id="palContainer">
+					<span class="palInput"><input type="text" onblur="(validHex(this))||((alert(`${value} is an invalid hexcode.`)), (this.value=''));" id="Palette" name="Palette" placeholder="input hexcode" size=6 /></span>
+				</span>
+				<br>
+				<label id="BackStyleLabel" for="BackStyle">Back Style:</label>
+				<select id="BackStyle" name="BackStyle" onchange="describeBackStyle(this.value)"> <!--TODO: have descriptions appear when clicked-->
+					<option value="Default"><button>Default</button></option>
+					<option value="Birdseye"><button>Birdseye</button></option>
+					<option value="Minimal"><button>Minimal</button></option>
+					<option value="Secure"><button>Secure</button></option>
+				</select>
+				<span id="BackStyleDescription"> is a freeform option that is similar to Birdseye in performance, but more suitable for pieces containing up to 5 colors.</span>
+				<br>
+				<label id="DitheringLabel" for="Dithering">Dithering:
+					<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-info-circle-fill" viewBox="0 0 16 16">
+						<path onclick="infoAlert(this)" style="z-index: 10;" d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm.93-9.412-1 4.705c-.07.34.029.533.304.533.194 0 .487-.07.686-.246l-.088.416c-.287.346-.92.598-1.465.598-.703 0-1.002-.422-.808-1.319l.738-3.468c.064-.293.006-.399-.287-.47l-.451-.081.082-.381 2.29-.287zM8 5.5a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"/>
+					</svg>
+				</label>
+				<select id="Dithering" name="Dithering"> <!--TODO: have description-->
+					<option value="true"><button>true</button></option>
+					<option value="false"><button>false</button></option>
+				</select>
+			</div>
+			<div class="specs" id="shape-specs" style="display:none">
+				<label id="IncMethodLabel" for="IncMethod">Increasing method:</label>
+				<select id="IncMethod" name="IncMethod"> <!--TODO: have description-->
+					<option value="xfer"><button>xfer</button></option>
+					<option value="twisted-stitch"><button>twisted stitch</button></option>
+					<option value="split"><button>split</button></option>
+				</select>
+				<br>
+				<label id="XferSpeedLabel" for="XferSpeed">Xfer speed:</label>
+				<input type="number" min="0" max="600" onblur="validity.valid||(value='');" id="XferSpeed" name="XferSpeed" step=1 size=3 value=300 />
+				<br>
+			</div>
+			<div class="specs" id="ext-specs" style="display: none;">
+				<h2>Specs</h2>
+				<label id="NeedleCountLabel" for="NeedleCount">Needle count:</label>
+				<input type="number" min="1" max="252" onblur="validity.valid||(value='');" id="NeedleCount" name="NeedleCount" step=1 placeholder="leave blank to scale to img dimensions" size=4 />
+				<br>
+				<label id="RowCountLabel" for="RowCount">Row count:</label>
+				<input type="number" min="1" oninput="validity.valid||(value='');" id="RowCount" name="RowCount" step=1 placeholder="leave blank to scale to img dimensions" size=4 />
+				<br>
+				<label id="MachineLabel" for="Machine">Machine:</label>
+				<input type="text" pattern="[kK]niterate|[sS]hima" onblur="validity.valid||(alert('invalid machine type.'), value='kniterate');" id="Machine" name="Machine" value="kniterate" size=8 />
+				<!-- <input type="text" pattern="[kK]niterate|[sS]hima" id="Machine" name="Machine" value="kniterate"/> -->
+				<br>
+				<label id="CastonCarrierLabel" for="CastonCarrier">Caston carrier:</label>
+				<input type="number" min="1" max="6" oninput="validity.valid||(value='');" id="CastonCarrier" name="CastonCarrier" step=1 placeholder="optional" size=2/>
+				<br>
+				<h2>Extensions</h2>
+				<label id="StitchNumberLabel" for="StitchNumber">Stitch number:</label>
+				<input type="number" min="0" max="9" oninput="validity.valid||(value='');" id="StitchNumber" name="StitchNumber" step=1 size=2 value=6 />
+				<br>
+				<label id="SpeedNumberLabel" for="SpeedNumber">Speed number:</label>
+				<input type="number" min="0" max="600" onblur="validity.valid||(value='');" id="SpeedNumber" name="SpeedNumber" step=1 size=3 value=300 />
+				<br>
+			</div>
+			<div class="specs" id="stitch-specs" style="display:none">
+				<table id="stitch-specs-table">
+					<tr class="columns">
+						<td></td>
+					</tr>
+				</table>
+			</div>
+			<div class="specs" id="rib-specs" style="display:none">
+				<h2>Top Rib</h2>
+				<label id="RibTopLabel" for="RibTop">Carrier:</label>
+				<input type="number" min="1" max="6" oninput="validity.valid||(value='');" id="RibTop" name="RibTop" step=1 placeholder="optional" size=4 />
+				<br>
+				<label id="RibTRowsLabel" for="RibTRows">Row count:</label>
+				<input type="number" min="1" onblur="validity.valid||(value='');" id="RibTRows" name="RibTRows" step=1 size=4 value=20 />
+				<br>
+				<h2>Bottom Rib</h2>
+				<label id="RibBotLabel" for="RibBot">Carrier:</label>
+				<input type="number" min="1" max="6" oninput="validity.valid||(value='');" id="RibBot" name="RibBot" step=1 placeholder="optional" size=4 />
+				<br>
+				<label id="RibBRowsLabel" for="RibBRows">Row count:</label>
+				<input type="number" min="1" onblur="validity.valid||(value='');" id="RibBRows" name="RibBRows" step=1 size=4 value=32 />
+				<br>
+			</div>
+			<div class="specs" id="waste-section-specs" style="display:none">
+				<label id="WasteCarrierLabel" for="WasteCarrier">Waste carrier:</label>
+				<input type="number" min="1" max="6" oninput="validity.valid||(value='');" id="WasteCarrier" name="WasteCarrier" step=1 placeholder="optional" size=4 />
+				<br>
+				<label id="WasteStitchLabel" for="WasteStitch">Waste stitch number:</label>
+				<input type="number" min="0" max="9" oninput="validity.valid||(value='');" id="WasteStitch" name="WasteStitch" step=1 size=2 value=6 />
+				<br>
+				<label id="WasteSpeedLabel" for="WasteSpeed">Waste speed number:</label>
+				<input type="number" min="0" max="600" onblur="validity.valid||(value='');" id="WasteSpeed" name="WasteSpeed" step=1 size=4 value=400 />
+				<br>
+				<label id="WasteRollerLabel" for="WasteRoller">Waste roller advance:</label>
+				<input type="number" min="0" max="1000" onblur="validity.valid||(value='');" id="WasteRoller" name="WasteRoller" step=1 size=4 value=150 />
+				<br>
+				<label id="WasteRowsLabel" for="WasteRows">Waste row count:</label>
+				<input type="number" min="35" onblur="validity.valid||(value='');" id="WasteRows" name="WasteRows" step=1 size=4 value=40 />
+				<br>
+			</div>
 			<input id="submit-button" type="submit" value="Submit!" />
 		</form>	
 	</main>
 	
-	<div>
-	<h2 id="messagesHeader">Messages</h2>
-	<ul id="messages">
-		<li class="info">(none yet)</li>
-		<!--
-		<li class="log">Messages from a console.log command end up looking like this text here looks</li>
-		<li class="info">Messages from a console.info command end up looking like this text here looks</li>
-		<li class="warn">Messages from a console.warn command end up looking like this text here looks</li>
-		<li class="error">Messages from a console.error command end up looking like this text here looks</li>
-		<li class="assert">Messages from a console.assert command end up looking like this text here looks</li>
-		-->
-	</ul>
-	</div>
-	
 	<div id="dropTarget"></div>
 
 	<script>
+		/*
+		if ('BackStyle' in req.body) back_style = req.body.BackStyle;
+		if ('NeedleCount' in req.body) needle_count = req.body.NeedleCount;
+		if ('RowCount' in req.body) row_count = req.body.RowCount;
+		if ('MaxColors' in req.body) max_colors = req.body.MaxColors;
+		if ('Dithering' in req.body) dithering = req.body.Dithering;
+		if ('Palette' in req.body) palette_opt = req.body.Palette;
+
+		if ('Machine' in req.body) machine = req.body.Machine;
+		if ('StitchNumber' in req.body) stitch_number = req.body.StitchNumber;
+		if ('SpeedNumber' in req.body) speed_number = req.body.SpeedNumber;
+		if ('CastonCarrier' in req.body) caston_carrier = req.body.CastonCarrier;
+		if ('WasteSettings' in req.body) wasteSettings = req.body.WasteSettings; //TODO: make sure this stays as an object
+
+		if ('Rib' in req.body) rib_info = req.body.Rib;
+		*/
+
 		let colorwork_img, needle_count = 'AUTO', row_count = 'AUTO', machine = 'kniterate', max_colors, dithering = false, palette_opt, stitch_number, speed_number, caston_carrier, wasteSettings, back_style = 'Secure', rib_info, st_pat_img, stitchPatterns = [];
 
-		let colFileInput = document.getElementById('colFile');
-		let inFileHeader = document.getElementById('inFileHeader');
+		// let colFileInput = document.getElementById('colFile');
+		let fileInputs = document.querySelectorAll('.fileInput');
 
-		let colFile = colFileInput.files[0];
-
-		let colorworkImageDiv = document.getElementById('colorworkImage');
+		let colorworkImageContainer = document.getElementById('colorworkImage');
 		let colInFileHolder = document.getElementById('colInFileHolder');
+
+		let stitchImageContainer = document.getElementById('stitchImage');
+
+		let shapeImageContainer = document.getElementById('shapeImage');
+
+		let backStyleDescription = document.getElementById('BackStyleDescription');
+
+
+		function infoAlert(target) {
+			let message;
+
+			let labelId = target.closest('label').id;
+
+			if (labelId === 'DitheringLabel') message = `dithering is recommended for detailed/naturalistic images, but not for graphics/digital artwork.`;
+
+			alert(message);
+		}
+
+
+		function validHex(target) {
+			let hexcode = target.value;
+			if (hexcode === '') return true;
+			let el = document.createElement('div');
+			el.style.borderColor = '';
+			el.style.borderColor = `#${hexcode}`;
+
+			if (!el.style.borderColor.length) return false;
+			else {
+				target.value = hexcode;
+				return true;
+			}
+		}
+
+
+		let palContainer = document.getElementById('palContainer');
+		
+		function adjustPalSize(colCount) {
+			colCount = Number(colCount);
+
+			let palInputCount = palContainer.childElementCount;
+			
+			if (colCount > palInputCount) { //
+				let inputClone = palContainer.querySelector('.palInput').cloneNode(true);
+				inputClone.querySelector('input').value = '';
+				
+				for (let p = 0; p < (colCount-palInputCount); ++p) {
+					palContainer.appendChild(inputClone);
+					inputClone = inputClone.cloneNode();
+				}
+			} else if (colCount < palInputCount) {
+				let palInputs = Array.from(palContainer.querySelectorAll('input'));
+
+				let emptyInputs = palInputs.filter(el => !el.value);
+
+				while (palInputCount > colCount) {
+					if (emptyInputs.length) {
+						let removeInput = emptyInputs.pop();
+						palContainer.removeChild(removeInput.closest('.palInput'));
+					} else {
+						let palInputContainers = palContainer.querySelectorAll('.palInput');
+						palContainer.removeChild(palInputContainers[palInputContainers.length-1]);
+					}
+
+					--palInputCount;
+				}
+			}
+		}
+
+
+		function describeBackStyle(choice) {
+			if (choice === 'Default') {
+				backStyleDescription.innerText = ' is a freeform option that is similar to Birdseye in performance, but more suitable for pieces containing up to 5 colors.';
+			} else if (choice === 'Birdseye') {
+				backStyleDescription.innerText = ' is not recommended for pieces that use more than 3 colors due to the build up of extra rows the method creates on the back bed.'
+			} else if (choice === 'Minimal') {
+				backStyleDescription.innerText = ' creates a reasonably even ratio of front to back rows, resulting in the least amount of build up on the back.'
+			} else if (choice === 'Secure') {
+				backStyleDescription.innerText = ` is the 'Minimal' option, with additional knits on the side needles for extra security.`
+			}
+		}
 
 
 		function readFile(file) {
 			let reader = new FileReader();
 			reader.onload = function() {
 				console.log(this.result);
+
+				// let arrayBuffer = this.result;
+        // let bytes = new Uint8Array(arrayBuffer);
+
+				// inputEl.value = bytes.toString(); // bytes.toString()
 				return this.result;
 			}
 
 			reader.readAsArrayBuffer(file);
 		}
 
-		colFileInput.addEventListener('change', (evt) => {
-			let colorwork_img = colFileInput.files[0];
 
-			let imgNode = document.createElement('img');
+		fileInputs.forEach(el => {
+			el.addEventListener('change', (evt) => {
+				let imgContainer = el.closest('.imgContainer');
+				let inFileHolder = el.closest('label');
 
-			imgNode.src = URL.createObjectURL(colorwork_img);
-			
-			console.log('imgNode:', imgNode.src); //remove //debug
-			readFile(colorwork_img);
+				let file_img = el.files[0];
 
-			// let buffer_file = readFile(colFileInput.files[0]);
-			// colFileInput.value = ''; //make it so that reloading file does properly reload file
-			// colFileInput.value = buffer_file; //make it so that reloading file does properly reload file
+				let imgNode = document.createElement('img');
 
-			// myAnchor.parentNode.replaceChild(mySpan, myAnchor);
-			// console.log(colFileInput.value);
+				let imgUrl = URL.createObjectURL(file_img)
 
-			colorworkImageDiv.replaceChild(imgNode, colInFileHolder);
+				imgNode.src = imgUrl;
+				
+				console.log('imgNode:', imgNode.src); //remove //debug
+				readFile(file_img);
 
-			// document.getElementById('colImgContainer').innerHTML = imgNode;
+				// el.value = imgBuffer;
 
-			// console.log(colFileInput.value);
-			evt.preventDefault();
-			return false;
+				inFileHolder.style.backgroundImage = `url('${imgUrl}')`;
+
+				// console.log('imgBuffer:', imgBuffer);
+
+				// colorworkImageContainer.replaceChild(imgNode, colInFileHolder);
+				
+				// imgContainer.appendChild(imgNode);
+				// imgContainer.replaceChild(imgNode, inFileHolder);
+
+				evt.preventDefault();
+				return false;
+			});
 		});
-
-		// colFileInput.addEventListener('change', (evt) => {
-		// 	let colorwork_img = colFileInput.files[0];
-
-		// 	readFile(colorwork_img);
-		// 	// inFileInput.value = ''; //make it so that reloading file does properly reload file
-
-		// 	let imgNode = document.createElement('img');
-
-		// 	imgNode.src = URL.createObjectURL(colorwork_img);
-
-		// 	document.getElementById('colImgContainer').innerHTML = imgNode;
-		// 	// let urlCreator = window.URL || window.webkitURL;
-
-		// 	// let imageUrl = urlCreator.createObjectURL(this.response);
-   	// 	// document.querySelector("#image").src = imageUrl;
-
-		// 	evt.preventDefault();
-		// 	return false;
-		// });
 
 		let carriers = ['1', '2', '3']; //TODO: change this
 
@@ -141,9 +339,6 @@
 			'lace': {'pattern rows': 2, 'stitches btw holes': 1, 'hole offset': 1, 'offset reset': 0}
 
 		};
-
-
-		
 
 
 		function labelToTag(label) {
@@ -199,120 +394,173 @@
 			return dropDownHtml;
 		}
 
-		function specify(opt) {
-			let table = document.getElementById('specs-table');
-			let colHeader = document.getElementById('columns');
+		function specify(optEl) {
+			let opt = optEl.innerText;
+
+			document.querySelector('.nav').querySelectorAll('li').forEach(el => {
+				console.log(el);
+				if (el.contains(optEl)) el.classList.add('active');
+				else el.classList.remove('active');
+			});
+
+			document.querySelectorAll('.specs').forEach(el => {
+				el.style.display = 'none';
+			});
+
+			colorworkImageContainer.style.display = 'none';
+			stitchImageContainer.style.display = 'none';
+			shapeImageContainer.style.display = 'none';
+
+			console.log('specifying...', opt); //remove //debug
+
+			let specsContainer;
+
+			// let table = document.getElementById('specs-table');
+			// let colHeader = document.getElementById('columns');
 			let columns = {}, row_labels = [];
 
-			if (opt === 'Stitch Patterns') {
-				// col_labels.push('Stitch Pattern Name', 'Mapped Color', 'Carrier', 'Customizations');
+			if (opt === 'Colorwork') {
+				specsContainer = document.getElementById('col-specs');
+				// colHeader = table.querySelector('.columns');
 
-				columns['Stitch Pattern Name'] = createDropdown(stitch_pat_opts, 'Stitch Pattern Name');
+				colorworkImageContainer.style.display = 'block';
+				// stitchImageContainer.style.display = 'none';
+			} else if (opt === 'Shaping') {
+				shapeImageContainer.style.display = 'block';
+				specsContainer = document.getElementById('shape-specs');
+				// return; //because no specs container
+			} else if (opt === 'Extensions & Specs') {
+				specsContainer = document.getElementById('ext-specs');
+			} else if (opt === 'Rib') {
+				specsContainer = document.getElementById('rib-specs');
+			} else if (opt === 'Waste Section') {
+				specsContainer = document.getElementById('waste-section-specs');
+			} else if (opt === 'Stitch Patterns') {
+				specsContainer = document.getElementById('stitch-specs');
 
-				columns['Mapped Color'] = `<input type='text' class='mapped-color' name='mapped-color' />`;
+				let table = document.getElementById('stitch-specs-table');
 
-				columns['Carrier'] = createDropdown(carriers, 'Carrier');
+				let colHeader = table.querySelector('.columns');
 
-				columns['Customizations'] = function() {
-					let stitchPatCols = document.querySelectorAll('input.mapped-color');
-					let stitchPatCarriers = document.querySelectorAll('select.carrier');
+				// colorworkImageContainer.style.display = 'none';
+				stitchImageContainer.style.display = 'block';
 
-					for (let i = 0; i < stitchPatCols.length; ++i) {
-						stitchPatCols[i].name = `mapped-color-${i+1}`;
-					}
+				if (!table.classList.contains('specified')) {
+					table.classList.add('specified');
 
-					for (let i = 0; i < stitchPatCarriers.length; ++i) {
-						stitchPatCarriers[i].name = `carrier-${i+1}`;
-					}
+					columns['Stitch Pattern Name'] = createDropdown(stitch_pat_opts, 'Stitch Pattern Name');
 
-					let stitchPatNames = document.querySelectorAll('select.stitch-pattern-name');
+					columns['Mapped Color'] = `<input type='text' class='mapped-color' name='mapped-color' />`;
 
-					if (stitchPatNames) {
-						let spIdx = 1;
-						stitchPatNames.forEach((el) => {
-							el.name = `stitch-pattern-name-${spIdx}`;
-							
-							let row_parent = el.closest('tr');
+					columns['Carrier'] = createDropdown(carriers, 'Carrier');
 
-							el.addEventListener('change', function() {
-								row_parent.querySelector('div.customizations').innerHTML = createDropdown(patCustomizations[el.value], 'customizations-table');
+					columns['Customizations'] = function() {
+						let stitchPatCols = document.querySelectorAll('input.mapped-color');
+						let stitchPatCarriers = document.querySelectorAll('select.carrier');
 
-								let customTable = row_parent.querySelector('select.customizations-table');
+						for (let i = 0; i < stitchPatCols.length; ++i) {
+							stitchPatCols[i].name = `mapped-color-${i+1}`;
+						}
 
-								customTable.name = `customizations-table-${spIdx}`;
+						for (let i = 0; i < stitchPatCarriers.length; ++i) {
+							stitchPatCarriers[i].name = `carrier-${i+1}`;
+						}
 
-								let customInput = row_parent.querySelector('div.input-value > input');
+						let stitchPatNames = document.querySelectorAll('select.stitch-pattern-name');
+
+						if (stitchPatNames) {
+							let spIdx = 1;
+							stitchPatNames.forEach((el) => {
+								el.name = `stitch-pattern-name-${spIdx}`;
 								
-								customInput.addEventListener('change', function() {
-									patCustomizations[el.value][customTable.value.replace(/-/g, ' ')] = Number(customInput.value);
-								});
+								let row_parent = el.closest('tr');
 
-								customTable.addEventListener('change', function() {
-									// el.querySelector('.input-value').innerHTML = `<input type="text" value="${patCustomizations[customTable.querySelector('select').value]} />`;
-									customInput.id = `${customTable.value}`;
-									customInput.value= `${patCustomizations[el.value][customTable.value.replace(/-/g, ' ')]}`;
+								el.addEventListener('change', function() {
+									row_parent.querySelector('div.customizations').innerHTML = createDropdown(patCustomizations[el.value], 'customizations-table');
 
-									// row_parent.querySelector('.input-value').innerHTML = `<input size="1" type="text" id="${customTable.value}" value="${patCustomizations[el.value][customTable.value.replace(/-/g, ' ')]}" />`;
-									// to_change.innerHTML = createDropdown(patCustomizations[el.value], 'Customizations');
+									let customTable = row_parent.querySelector('select.customizations-table');
+
+									customTable.name = `customizations-table-${spIdx}`;
+
+									let customInput = row_parent.querySelector('div.input-value > input');
+									
+									customInput.addEventListener('change', function() {
+										patCustomizations[el.value][customTable.value.replace(/-/g, ' ')] = Number(customInput.value);
+									});
+
+									customTable.addEventListener('change', function() {
+										// el.querySelector('.input-value').innerHTML = `<input type="text" value="${patCustomizations[customTable.querySelector('select').value]} />`;
+										customInput.id = `${customTable.value}`;
+										customInput.value= `${patCustomizations[el.value][customTable.value.replace(/-/g, ' ')]}`;
+
+										// row_parent.querySelector('.input-value').innerHTML = `<input size="1" type="text" id="${customTable.value}" value="${patCustomizations[el.value][customTable.value.replace(/-/g, ' ')]}" />`;
+										// to_change.innerHTML = createDropdown(patCustomizations[el.value], 'Customizations');
+									});
 								});
+								spIdx += 1;
 							});
-							spIdx += 1;
-						});
 
-					}
-					
-				}; //will be updated if something is selected
+						}
+						
+					}; //will be updated if something is selected
 
-				if (stitch_pat_cols) {
-					for (let i = 1; i <= stitch_pat_cols; ++i) {
-						row_labels.push(`Stitch Pattern #${i}:`);
+					if (stitch_pat_cols) {
+						for (let i = 1; i <= stitch_pat_cols; ++i) {
+							row_labels.push(`Stitch Pattern #${i}:`);
+						}
 					}
+					// document.getElementById('specs').innerHTML = `<div>stitch specs</div>`;
 				}
-				// document.getElementById('specs').innerHTML = `<div>stitch specs</div>`;
-			}
 
-			// for (let c = 0; c < col_labels.length; ++c) {
-			let c = 1;
-			for (let col in columns) {
-				let column = colHeader.insertCell(c);
-				column.id = labelToTag(col);
-				column.innerHTML = `<b>${col}</b>`;
-				c += 1;
-			}
-
-			let cells = {};
-			for (let r = 0; r < row_labels.length; ++r) {
-				cells[r] = [];
-
-				let row = table.insertRow(r+1);
-				cells[r].push(row.insertCell(0));
-				cells[r][0].innerHTML = row_labels[r];
-				c = 1;
+				let c = 1;
 				for (let col in columns) {
-					cells[r].push(row.insertCell(c));
-					cells[r][c].classList.add(`${labelToTag(col)}`);
-					if (typeof columns[col] === 'function') {
-						// cells[r][c].innerHTML  = `<div id="${labelToTag(col)}-${c-1}"></div>`;
-						cells[r][c].innerHTML  = `<div class="${labelToTag(col)}"></div>`;
-						columns[col]();
-					} else cells[r][c].innerHTML = columns[col];
-					// cells[c].innerHTML = `<input type='text' />`
+					let column = colHeader.insertCell(c);
+					column.id = labelToTag(col);
+					column.innerHTML = `<b>${col}</b>`;
 					c += 1;
 				}
+
+				let cells = {};
+				for (let r = 0; r < row_labels.length; ++r) {
+					cells[r] = [];
+
+					let row = table.insertRow(r+1);
+					cells[r].push(row.insertCell(0));
+					cells[r][0].innerHTML = row_labels[r];
+					c = 1;
+					for (let col in columns) {
+						cells[r].push(row.insertCell(c));
+						cells[r][c].classList.add(`${labelToTag(col)}`);
+						if (typeof columns[col] === 'function') {
+							// cells[r][c].innerHTML  = `<div id="${labelToTag(col)}-${c-1}"></div>`;
+							cells[r][c].innerHTML  = `<div class="${labelToTag(col)}"></div>`;
+							columns[col]();
+						} else cells[r][c].innerHTML = columns[col];
+						// cells[c].innerHTML = `<input type='text' />`
+						c += 1;
+					}
+				}
 			}
 
-
+			specsContainer.style.display = 'block';
 		}
 
 
-		document.getElementById('stitch-patterns').addEventListener('click', function() {
-			if (!st_pat_img) {
+		// document.getElementById('stitch-patterns').addEventListener('click', function() {
+		// 	if (!st_pat_img) {
 
+		// 	}
+		// })
+
+		// document.querySelectorAll('.option').forEach(function(el) {
+		// 	el.addEventListener('click', specify(el.innerText));
+		// });
+
+		document.querySelectorAll('.option').forEach(el => {
+			el.onclick = () => {
+				specify(el);
 			}
-		})
-
-		document.querySelectorAll('.option').forEach(function(el) {
-			el.addEventListener('click', specify(el.innerText));
+			// ('click', specify(el.innerText));
 		});
 
 		function saveData() {

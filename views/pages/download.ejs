@@ -5,23 +5,71 @@
 	<link rel="stylesheet" type="text/css" href="/stylesheets/knitify.css" />
 </head>
 
-<body>
+<body style="margin: 6%">
 
 
 	<div>
-		<h2>Output Knitout</h2>
-		<a id="outFileHolder" class="file download" href="#" download="colorwork.k">
+		<h2>Output Colorwork Knitout</h2>
+		<a id="colOutFileHolder" class="outFileHolder file download" href="#" download="colorwork.k">
 		<div id="outFileName"></div>
-		<div id="knitout" style="display:none"><%=knitout%></div>
+		<div id="colorwork-knitout" style="display:none"><%=colorwork_knitout%></div>
 		</a>
-	</div>	
+	</div>
+
+	<% if (shape_knitout) { %>
+
+		<div>
+			<h2>Output Shaping Knitout</h2>
+			<a id="shapeOutFileHolder" class="outFileHolder file download" href="#" download="shaping.k">
+				<div id="shapeOutFileName"></div>
+				<div id="shape-knitout" style="display:none"><%=shape_knitout%></div>
+				</a>
+		</div>
+	 
+	<% } %>
+
+	<div id="motifImage" class="imgContainer" style="display:block">
+		<h2>Knit Motif</h2>
+		<div id="knitMotif">
+		</div>
+		<p>
+			<div>View in <a href="https://textiles-lab.github.io/knitout-live-visualizer/">Knitout Live Visualizer</a></div> <!-- TODO: add iframe with visualizer in it -->
+		</p>
+	</div>
+
+	<div>
+		<h2 id="messagesHeader">Messages</h2>
+		<ul id="messages">
+			<!-- <li class="info">(none yet)</li> -->
+			<%- logMessages.join('<br>') %>
+			<!--
+			<li class="log">Messages from a console.log command end up looking like this text here looks</li>
+			<li class="info">Messages from a console.info command end up looking like this text here looks</li>
+			<li class="warn">Messages from a console.warn command end up looking like this text here looks</li>
+			<li class="error">Messages from a console.error command end up looking like this text here looks</li>
+			<li class="assert">Messages from a console.assert command end up looking like this text here looks</li>
+			-->
+		</ul>
+		</div>
+
+	
 
 </body>
 </html>
 
 <script>
-	let knitoutText = document.getElementById('knitout').innerText;
 
-	console.log(knitoutText)
-	document.getElementById('outFileHolder').href = URL.createObjectURL(new Blob([knitoutText]));
+let colKnitoutText = document.getElementById('colorwork-knitout').innerText;
+
+document.getElementById('colOutFileHolder').href = URL.createObjectURL(new Blob([colKnitoutText]));
+
+
+// console.log(colKnitoutText); //remove //debug
+
+<% if (shape_knitout) { %>
+	let shapeKnitoutText = document.getElementById('shape-knitout').innerText;
+
+	document.getElementById('shapeOutFileHolder').href = URL.createObjectURL(new Blob([shapeKnitoutText]));
+<% } %>
+	
 </script>

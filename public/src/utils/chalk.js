@@ -1,14 +1,16 @@
 let chalk;
 
+
 const F = function(...args) {
 	console.log('Original function call', args);
 }
 
 const ChalkFunc = {
 	apply: (target, thisArg, message) => {
-		console.log('applying!', thisArg, message, target.name); //remove //debug
+		// console.log('applying!', thisArg, message, target.name); //remove //debug
 
 		let chalk_html = {
+			'chalk': true,
 			'style': Object.keys(chalk),
 			'message': message
 		}
@@ -18,7 +20,7 @@ const ChalkFunc = {
 		return chalk_html;
 	},
 	get: (target, property, receiver) => {
-		console.log('get func.', target, property, receiver);
+		// console.log('get func.', target, property, receiver);
 
 		if (!(property in chalk)) {
 			chalk_prop = new Proxy(F, ChalkFunc);
@@ -28,15 +30,15 @@ const ChalkFunc = {
 
 		return chalk_prop;
 	},
-	set: (target, property, value, receiver) => {
-		console.log('set func.');
-	}
+	// set: (target, property, value, receiver) => {
+	// 	console.log('set func.');
+	// }
 }
 
 
 const Chalk = {
 	get: (target, property, receiver) => {
-		console.log('get.', target, property, receiver, '\n'); //remove //debug
+		// console.log('get.', target, property, receiver, '\n'); //remove //debug
 
 		let chalk_prop;
 

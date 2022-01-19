@@ -15,3 +15,6 @@ ignore/
 
 
 public/images/out-colorwork-images/*.png
+public/images/out-shape-images/*.png
+
+public/src/shapeify/shapeify-command.js

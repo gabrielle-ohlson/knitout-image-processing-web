@@ -92,7 +92,7 @@ function generateKnitout(machine, colors_data, background, color_count, colors_a
 	if (stitchOnly && stData.length === 1 && stData[0].name === 'Lace') { //new //check
 		main_stitch_number = stitch_number + 3;
 		if (main_stitch_number > 9) main_stitch_number = 9;
-		if (main_stitch_number != stitch_number) console.log(chalk.black.bgYellow('! WARNING:') + ` Increased main stitch number from ${stitch_number} to ${main_stitch_number} since entire piece is lace, which requires a larger stitch number.`);
+		if (main_stitch_number != stitch_number) console.log(chalk.black.bgYellow('! WARNING:'), ` Increased main stitch number from ${stitch_number} to ${main_stitch_number} since entire piece is lace, which requires a larger stitch number.`);
 	}
 
 	let reverse = ((back_style === 'Minimal' || back_style === 'Secure') ? false : true);
@@ -101,7 +101,7 @@ function generateKnitout(machine, colors_data, background, color_count, colors_a
 		// reverse = false;
 		if (color_count < 4) {
 			back_style = 'Minimal';
-			console.log(chalk.black.bgYellow('! WARNING:') + ` Changed back style from 'Secure' to 'Minimal' since using less than 4 colors.`);
+			console.log(chalk.black.bgYellow('! WARNING:'), ` Changed back style from 'Secure' to 'Minimal' since using less than 4 colors.`);
 		} else {
 			edge_L.push(3, 1, 2);
 			

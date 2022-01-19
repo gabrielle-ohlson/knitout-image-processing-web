@@ -6,9 +6,7 @@ const PORT = process.env.PORT || 5000;
 
 // const knitify = require('./public/src/knitify/knitify'); //new
 
-const fs = require('fs');
-
-console.log('1!!!!');
+// const fs = require('fs');
 
 const app = express();
 
@@ -25,42 +23,53 @@ app.use(fileUpload());
 
 app.use(express.static(path.join(__dirname, 'public')));
 
+
 const knitify = require('./public/src/knitify/knitify'); //new
 
+const shapeify = require('./public/src/shapeify/shapeify'); //new
+
+const shape = require('./public/src/shapeify/shape');
+
+
+// let motif_path = '/images/out-colorwork-images/knit_motif.png';
+
+const chalk = require('./public/src/utils/chalk');
+
+const webify = require('./public/src/utils/webify');
+
+console.log('init!'); //remove //debug
+
+app.locals.shape_knitout = undefined;
+app.locals.logMessages = [];
+
 app.use(function(req, res, next) {
+	// app.locals.picPath = '/images/out-shape-images/shape_code.png';
+	// app.locals.motifPath = '/images/out-colorwork-images/knit_motif.png';
+	
+
 	res.locals.knitify = knitify;
+	// res.locals.picPath = '';
+	// res.locals.motif = motif_path;
 	next();
 })
-// app.locals.colorwork = colorwork;
-
-// app.use(express.json());
-
-// app.use(express.urlencoded())
-
-console.log('2!!!!');
-
-// other code
-// express()
-// 	.use(express.static(path.join(__dirname, 'public')))
-// 	.set('views', path.join(__dirname, 'views'))
-// 	.set('view engine', 'ejs')
-// 	.get('/', (req, res) => res.render('pages/knitify'))
-// 	// .get('/', (req, res) => res.render('pages/index'))
-// 	.listen(PORT, () => console.log(`Listening on ${ PORT }`))
 
 
 app.set('views', path.join(__dirname, 'views'));
 
 app.set('view engine', 'ejs');
 
-// app.get('/', (req, res) => res.render('pages/knitify'));
-// app.get('/', (req, res) => res.render('pages/knitify', {knitify:knitify, test:test}));
+// let logMessages = [];
 
-// exports.app = function(req, res) {
-// 	res.render('pages/knitify', {test: test});
-// }
+// const {logger} = require('./public/src/utils/webify');
+// app.use('/download', logger);
 
-let colorwork_img, needle_count = 'AUTO', row_count = 'AUTO', machine = 'kniterate', max_colors = 4, dithering = false, palette_opt, stitch_number, speed_number, caston_carrier, wasteSettings, back_style = 'Secure', rib_info, st_pat_img, stitchPatterns = [];
+let colorwork_knitout, shape_knitout; //new location
+
+let shape_img, shape_info;
+
+let colorwork_img, needle_count, row_count, machine = 'kniterate', max_colors = 4, dithering = false, palette_opt, stitch_number, speed_number, caston_carrier, wasteSettings, back_style = 'Secure', rib_info, st_pat_img, stitchPatterns = [];
+
+let inc_method = 'xfer', xfer_speed_number = 300;
 
 class StitchPattern {
 	constructor(name, hex, carrier) {
@@ -98,7 +107,10 @@ class StitchPattern {
 
 			*/
 
-app.post('/download', function(req, res) {
+app.post('/download', function(req, res, next) {
+	console.log('post download');
+	console.log('colorwork_knitout' in req.app.locals);
+	console.log(req.app.locals.colorwork_knitout); //remove //debug
 	// let sampleFile;
   // let uploadPath;
 
@@ -106,124 +118,284 @@ app.post('/download', function(req, res) {
 	// 	return res.status(400).send(`${Object.keys(req.body)}`); //  ${Object.keys(req.query)}
   //   // return res.status(400).send('No files were uploaded.');
   // }
-
-
-	if (req.files) {
-		console.log(req.files);
-		if ('colFile' in req.files) {
-			colorwork_img = req.files.colFile.data;
-			console.log('!!!!!!', colorwork_img);
-			// let colFile = req.files.colFile;
-			// colorwork_image = `./public/images/${colFile.name}`;
-			// colFile.mv(colorwork_image, function(err) {
-			// 	if (err) return res.status(500).send(err);
-		
-			// 	// res.send('File uploaded!');
-			// });
-			// colorwork_img = req.files.colFile;
-		}
-		if ('stFile' in req.files) {
-			let stFile = req.files.stFile;
-			st_pat_img = `./public/images/${st_pat_img.name}`;
-			stFile.mv(st_pat_img, function(err) {
-				if (err) return res.status(500).send(err);
-		
-				// res.send('File uploaded!');
-			});
-			// req.files.stFile;
-		}
+	function processShape(img) {
+		// if (img) {
+		const promise = new Promise((resolve) => {
+			if (img) {
+				shapeify.process(img, true, needle_count, row_count)
+				.then((result) => {
+					// let shape_info = result;
+					resolve(result);
+					return result;
+				});
+			} else resolve();
+		});
+		return promise;
+		// } else return;
 	}
 
-	// return res.status(400).send(`!${colorwork_img}!`);
 
-	if (req.body) {
-		if ('BackStyle' in req.body) back_style = req.body.BackStyle;
-		if ('NeedleCount' in req.body) needle_count = req.body.NeedleCount;
-		if ('RowCount' in req.body) row_count = req.body.RowCount;
-		if ('MaxColors' in req.body) max_colors = req.body.MaxColors;
-		if ('Dithering' in req.body) dithering = req.body.Dithering;
-		if ('Palette' in req.body) palette_opt = req.body.Palette;
+	if (req.app.locals.colorwork_knitout) { //already processed knitout, but alteration was made to shape (or need to process shape now)
+		console.log('!!!!', req.files); //remove //debug
+		if (req.files && 'drawing' in req.files) {
+			shape_img = req.files.drawing.data;
 
-		if ('Machine' in req.body) machine = req.body.Machine;
-		if ('StitchNumber' in req.body) stitch_number = req.body.StitchNumber;
-		if ('SpeedNumber' in req.body) speed_number = req.body.SpeedNumber;
-		if ('CastonCarrier' in req.body) caston_carrier = req.body.CastonCarrier;
-		if ('WasteSettings' in req.body) wasteSettings = req.body.WasteSettings; //TODO: make sure this stays as an object
+			processShape(shape_img)
+				.then((result) => {
+					shape_info = result;
+				});
+		}
 
-		if ('Rib' in req.body) rib_info = req.body.Rib;
+		let in_file = colorwork_knitout
+			.toString()
+			.split(';r');
 
-		if (st_pat_img) {
-			let stitchNames = Object.keys(req.body).filter(el => el.includes('StitchPatternName'));
-			let stitchMapCols = Object.keys(req.body).filter(el => el.includes('MappedColor'));
-			let stitchCarriers = Object.keys(req.body).filter(el => el.includes('Carrier'));
+		let shape_code = shape_info[0],
+			shape_code_reverse = shape_info[1],
+			shortrow_code = shape_info[2],
+			short_row_section = shape_info[3],
+			first_short_row = shape_info[4],
+			last_short_row = shape_info[5],
+			section_count = shape_info[6],
+			shape_error = shape_info[7],
+			shape_err_row = shape_info[8];
 
-			for (let s = 0; s < stitchNames.length; ++s) {
-				stitchPatterns.push(StitchPattern(req.body[stitchNames[s]], req.body[stitchMapCols[s]], req.body[stitchCarriers[s]]));
+
+		function getShapeKnitout() {
+			return new Promise((resolve) => {
+				let k = shape.generateKnitout(in_file, shape_code, shape_code_reverse, shortrow_code, short_row_section, first_short_row, last_short_row, section_count, shape_error, shape_err_row, inc_method, xfer_speed_number, webify.console, chalk);
+
+				resolve(k);
+				// return k;
+			});
+			// let k = await knitify.process(colorwork_img, needle_count, row_count, machine, max_colors, dithering, palette_opt, stitch_number, speed_number, caston_carrier, wasteSettings, back_style, rib_info, st_pat_img, stitchPatterns)
+			
+		}
+
+		// shape_knitout = shape.generateKnitout(in_file, shape_code, shape_code_reverse, shortrow_code, short_row_section, first_short_row, last_short_row, section_count, shape_error, shape_err_row, inc_method, xfer_speed_number, webify.console, chalk);
+
+		console.log('shape_knitout:'); //remove //debug
+
+		getShapeKnitout()
+			.then((result) => {
+				shape_knitout = result;
+				
+				app.locals.shape_knitout = shape_knitout;
+
+				// return res.redirect('/download');
+				// next();
+				// return next();
+				// return res.render('pages/download');
+			}).then(() => {
+				return next();
+			})
+
+		// res.app.locals.shape_knitout = shape_knitout;
+
+		// return next();
+
+		// res.render('pages/download', {colorwork_knitout:colorwork_knitout, shape_knitout:shape_knitout, logMessages:logMessages});
+		
+		// return res.render('pages/download');
+
+		// return res.render('pages/download', {colorwork_knitout:colorwork_knitout, shape_knitout:shape_knitout, logMessages:logMessages});
+	} else {
+		console.log('other...'); //remove //debug
+		if (req.files) {
+			// console.log(req.files, req.files.colFile); //remove //debug
+			if ('colFile' in req.files) colorwork_img = req.files.colFile.data;
+			
+			if ('stFile' in req.files) {
+				let stFile = req.files.stFile;
+				st_pat_img = `./public/images/${st_pat_img.name}`;
+				stFile.mv(st_pat_img, function(err) {
+					if (err) return res.status(500).send(err);
+				});
+			}
+
+			if ('shapeFile' in req.files) shape_img = req.files.shapeFile.data;
+		}
+
+		if (req.body) {
+			Object.keys(req.body).forEach(key => {
+				if (req.body[key] === '') {
+					delete req.body[key];
+				}
+			});
+
+			// console.log(req.body); //remove //debug
+
+			if ('BackStyle' in req.body) back_style = req.body.BackStyle;
+			if ('NeedleCount' in req.body) needle_count = req.body.NeedleCount;
+			if ('RowCount' in req.body) row_count = req.body.RowCount;
+			if ('MaxColors' in req.body) max_colors = req.body.MaxColors;
+			if ('Dithering' in req.body) dithering = req.body.Dithering;
+			if ('Palette' in req.body) palette_opt = req.body.Palette;
+
+			if ('Machine' in req.body) machine = req.body.Machine.toLowerCase();
+			if ('StitchNumber' in req.body) stitch_number = req.body.StitchNumber;
+			if ('SpeedNumber' in req.body) speed_number = req.body.SpeedNumber;
+			if ('CastonCarrier' in req.body) caston_carrier = req.body.CastonCarrier;
+
+			if ('IncMethod' in req.body) inc_method = req.body.IncMethod;
+			if ('XferSpeed' in req.body) xfer_speed_number = req.body.XferSpeed;
+
+
+			// if ('WasteSettings' in req.body) wasteSettings = req.body.WasteSettings; //TODO: make sure this stays as an object
+
+			let rib_top = req.body.RibTop,
+				rib_bottom = req.body.RibBot;
+
+			if (rib_top || rib_bottom) {
+				rib_info = {
+					'rib_top': (rib_top === '' ? null : rib_top),
+					'ribT_rows': req.body.RibTRows,
+					'rib_bottom': (rib_bottom === '' ? null : rib_bottom),
+					'ribB_rows': req.body.RibBRows
+				}
+			}
+
+			if (st_pat_img) {
+				let stitchNames = Object.keys(req.body).filter(el => el.includes('StitchPatternName'));
+				let stitchMapCols = Object.keys(req.body).filter(el => el.includes('MappedColor'));
+				let stitchCarriers = Object.keys(req.body).filter(el => el.includes('Carrier'));
+
+				for (let s = 0; s < stitchNames.length; ++s) {
+					stitchPatterns.push(StitchPattern(req.body[stitchNames[s]], req.body[stitchMapCols[s]], req.body[stitchCarriers[s]]));
+				}
 			}
 		}
+
+		// let knitout = colorwork.process(colorwork_img, needle_count, row_count, machine, max_colors, dithering, palette_opt, stitch_number, speed_number, caston_carrier, wasteSettings, back_style, rib_info, st_pat_img, stitchPatterns);
+		// let colorwork_knitout, shape_knitout;
+
+		async function getKnitout() {
+			let k = await knitify.process(colorwork_img, needle_count, row_count, machine, max_colors, dithering, palette_opt, stitch_number, speed_number, caston_carrier, wasteSettings, back_style, rib_info, st_pat_img, stitchPatterns)
+			.then((result) => {
+				colorwork_knitout = result[0];
+				needle_count = result[1];
+				row_count = result[2];
+				// console.log('!', colorwork_knitout); //remove //debug
+				// console.log('needle_count:');
+				// console.log(needle_count);
+				// console.log(row_count); //remove //debug
+			});
+		}
+
+
+		// function processShape() {
+		// 	if (shape_img) {
+		// 		const promise = new Promise((resolve) => {
+		// 			shapeify.process(shape_img, true, needle_count, row_count)
+		// 			.then((result) => {
+		// 				let shape_info = result;
+		// 				resolve(shape_info);
+		// 				return shape_info;
+		// 			});
+		// 		});
+		// 		return promise;
+		// 	} else return;
+		// }
+
+		// async function processShape() {
+		// 	if (shape_img) { // function process(img_path, crop_img, needle_count, row_count) { //crop_img is bool
+		// 		// let k = await shapeify.process(colorwork_knitout, shape_img, needle_count, row_count, inc_method, xfer_speed_number)
+		// 		let k = await shapeify.process(shape_img, true, needle_count, row_count)
+		// 		.then((result) => {
+		// 			let shape_info = result;
+
+		// 			// shape_knitout = result;
+		// 		});
+		// 	}
+		// }
+
+
+		// async function getShapeKnitout() {
+		// 	if (shape_img) { // function process(img_path, crop_img, needle_count, row_count) { //crop_img is bool
+		// 		// let k = await shapeify.process(colorwork_knitout, shape_img, needle_count, row_count, inc_method, xfer_speed_number)
+		// 		let k = await shapeify.process(shape_img, true, needle_count, row_count)
+		// 		.then((result) => {
+		// 			let shape_info = result;
+
+		// 			// shape_knitout = result;
+		// 		});
+		// 	}
+		// }
+
+		getKnitout()
+			.then(() => {
+				app.locals.colorwork_knitout = colorwork_knitout;
+
+				app.locals.motifPath = '/images/out-colorwork-images/knit_motif.png';
+
+				processShape(shape_img)
+				// getShapeKnitout()
+					.then((result) => {
+						shape_info = result;
+
+						app.locals.picPath = '/images/out-shape-images/shape_code.png';
+
+						if (shape_info) return res.redirect('/draw');
+						// if (shape_info) return res.redirect('pages/draw', {picPath:'/images/out-shape-images/shape_code.png', motif:motif_path});
+						else return res.redirect('/download');
+						// {
+						// 	// req.app.locals.colorwork_knitout = colorwork_knitout;
+						// 	// req.colorwork_knitout = colorwork_knitout;
+						// 	return next();
+						// }
+
+						// else return res.render('pages/download', {colorwork_knitout:colorwork_knitout, shape_knitout:shape_knitout, logMessages:logMessages});
+					});
+			});
+
+		// getKnitout()
+		// 	.then(() => {
+		// 		processShape()
+		// 		// getShapeKnitout()
+		// 		.then(() => {
+		// 			return res.render('pages/download', {colorwork_knitout:colorwork_knitout, shape_knitout:shape_knitout, logMessages:logMessages});
+		// 		});
+		// 	});
+
+			// getKnitout().then(() => {
+			// 	if (shape_img) {
+			// 		getShapeKnitout(); //TODO: check
+			// 	}
+
+			// 	return res.render('pages/download', {knitout:colorwork_knitout});
+			// 	// return res.status(400).send(`!${knitout}!`);
+			// 	// return res.status(400).send(`!${knitout}!`);
+			// });
 	}
+});
 
-	// let knitout = colorwork.process(colorwork_img, needle_count, row_count, machine, max_colors, dithering, palette_opt, stitch_number, speed_number, caston_carrier, wasteSettings, back_style, rib_info, st_pat_img, stitchPatterns);
-	let knitout;
+app.get('/download', function(req, res) {
+	if (res.app.locals.colorwork_knitout) {
+		console.log('download...'); //remove //debug
+		webify.set_locals(app);
 
-	async function getKnitout() {
-		// function process(img_path, needle_count, row_count, machine, max_colors, dithering, palette_opt, stitch_number, speed_number, caston_carrier, wasteSettings, back_style, rib_info, stImg, stitchPats)
+		return res.render('pages/download');
+	} else return res.redirect('/');
 
-		let k = await knitify.process(colorwork_img, needle_count, row_count, machine, max_colors, dithering, palette_opt, stitch_number, speed_number, caston_carrier, wasteSettings, back_style, rib_info, st_pat_img, stitchPatterns)
-		// let k = await knitify.process(colorwork_img, 100, 100, 'kniterate', 4, false, undefined, undefined, undefined, undefined, undefined, back_style, undefined, undefined, [])
-		.then((result) => {
-			knitout = result;
-			console.log('!', knitout);
-			// return result;
-		});
-		
-		// return k;
-	}
+	// return res.render('pages/download', {colorwork_knitout:req.app.locals.colorwork_knitout, shape_knitout:req.app.locals.shape_knitout, logMessages:req.app.locals.logMessages});
+});
 
-	getKnitout().then(() => {
-		// URL.createObjectURL(new Blob([knitout]))
-		// const blob = new Blob([knitout]);
-		// const href = URL.createObjectURL(blob);
-		// <%= knitout %>
-		return res.render('pages/download', {knitout:knitout});
-		// return res.status(400).send(`!${knitout}!`);
-		// return res.status(400).send(`!${knitout}!`);
-	});
+// 	getKnitout()
+// 		.getShapeKnitout()
+// 		.then(() => {
+// 			return res.render('pages/download', {colorwork_knitout:colorwork_knitout, shape_knitout:shape_knitout});
+// 		});
 
-	// console.log('!!', knitout);
+// 		// getKnitout().then(() => {
+// 		// 	if (shape_img) {
+// 		// 		getShapeKnitout(); //TODO: check
+// 		// 	}
 
-	// let knitout = colorwork.process(colorwork_img, 100, 100, 'kniterate', 4, false, undefined, undefined, undefined, undefined, undefined, back_style, undefined, undefined, []);
-
-	// console.log('!!', knitout);
-
-	// return res.status(400).send(`!${knitout}!`);
-
-
-
-	// for (let file in req.files) {
-	// 	res.send(`${file}, ${req.files[file]}`);
-	// }
-  // The name of the input field (i.e. "sampleFile") is used to retrieve the uploaded file
-  // sampleFile = req.files.colFile;
-  // uploadPath = __dirname + '/public/files/' + sampleFile.name;
-
-	// Use the mv() method to place the file somewhere on your server
-	// sampleFile.mv(uploadPath, function(err) {
-	//   if (err)
-	//     return res.status(500).send(err);
-
-	//   res.send('File uploaded!');
-	// });
-
-	// let img = req.query.colFileInput;
-
-	// let imgTxt = JSON.stringify(img);
-
-	// fs.writeFileSync('img.txt', imgTxt);
-
-	// if (img !== '') res.send('!!!!!!!!!!!!!!!!!');
-	// else res.send('!');
-})
+// 		// 	return res.render('pages/download', {knitout:colorwork_knitout});
+// 		// 	// return res.status(400).send(`!${knitout}!`);
+// 		// 	// return res.status(400).send(`!${knitout}!`);
+// 		// });
+// })
 
 
 app.get('/', (req, res) => {
@@ -243,9 +415,20 @@ app.get('/', (req, res) => {
 	// res.json({})
 });
 
+// app.get('/', (req, res) => {
 
-console.log('5!!!!');
+// 	res.render('pages/knitify', {knitify:knitify});
+// });
+
+
+app.get('/draw', (req, res) => {
+	console.log('draw...'); //remove //debug
+	res.render('pages/draw');
+	// res.render('pages/draw', {picPath:'/images/out-shape-images/shape_code.png', motif:motif_path});
+});
+
+
+// app.
+
 app.listen(PORT, () => console.log(`Listening on ${ PORT }`));
-
-console.log('6!!!!');
 

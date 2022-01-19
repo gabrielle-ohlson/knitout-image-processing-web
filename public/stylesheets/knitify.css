@@ -7,6 +7,11 @@ body {
   font-size: 16px;
 }
 
+form {
+	padding-left: 20px;
+	width: 100vw;
+}
+
 /* dropTarget style from dat viewer */
 #dropTarget {
 	position:fixed;
@@ -42,6 +47,7 @@ body {
 a {
   text-decoration: none;
   color: #3383ff;
+	cursor: pointer;
 }
 a:hover {
   text-decoration: underline;
@@ -71,7 +77,7 @@ h2 {
   color: #ff1786;
   /* color: #7934fa; */
   font-weight: 900;
-  margin:0 0 10px 0;
+  margin: 0 0 10px 0;
   padding:0;
 }
 
@@ -121,6 +127,25 @@ main > #to {
 
 .file {
 	background-image: url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="61mm" height="81mm" viewBox="9.5 9.5 61 81" version="1.1">%3Cpath style="fill:%23f2f2f2;stroke:%23000000;stroke-width:1;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none" d="M 10,90 V 30 L 30,10 H 70 V 90 Z" />%3Cpath style="fill:%23f9f9f9;stroke:%23000000;stroke-width:1;stroke-linejoin:bevel;stroke-opacity:1;stroke-miterlimit:4;stroke-dasharray:none" d="M 10,30 H 30 V 10 Z" />%3C/svg>');
+	background-size:contain;
+	background-repeat:no-repeat;
+	background-position:top;
+	box-sizing:border-box;
+	width:153px;
+	height:202px;
+
+	display:flex;
+	flex-flow:column;
+	justify-content:center;
+
+	padding:50px 10px 10px 10px;
+	text-align:center;
+
+	margin:0 auto;
+}
+
+#knitMotif {
+	background-image: url('../images/out-colorwork-images/knit_motif.png');
 	background-size:contain;
 	background-repeat:no-repeat;
 	background-position:top;
@@ -201,13 +226,13 @@ ul, ol {
 	list-style:none;
 }
 
-li::before {
+/* li::before {
   content: '>';
   display:inline-block;
   width:15px;
   margin-left:-15px;
   color: #ff1786;
-}
+} */
 
 #inFileName, #outFileName {
 	font-weight:bold;
@@ -224,17 +249,17 @@ li::before {
 	font-size:80%;
 }
 
-#outFileHolder:after {
+.outFileHolder:after {
 	content:'(click to download)';
 	font-size:75%;
 	color:#333;
 }
 
-#outFileHolder.empty:after {
+.outFileHolder.empty:after {
 	content:'';
 	font-size:80%;
 }
-#outFileHolder.error:after {
+.outFileHolder.error:after {
 	content:'Error!';
 	font-size:200%;
 	color:#f44;
@@ -255,4 +280,34 @@ table
 {
 	border-collapse:separate;
 	border-spacing:0 10px;
+}
+
+
+.navbar {
+	width: 100%;
+	padding: 0;
+	margin: 0;
+}
+
+.container {
+	width: 100%;
+	padding: 0;
+	margin: 0;
+}
+
+
+.navbar-right {
+	margin-right: 0px;
+	/* padding-right: 15px; */
+}
+
+@media (max-width:767px) {
+	.nav > li > a {
+		padding-left: 6vw;
+	}
+}
+
+.palInput::before {
+	content: '#';
+	color:#000;	
 }

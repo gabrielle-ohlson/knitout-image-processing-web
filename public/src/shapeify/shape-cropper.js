@@ -42,6 +42,8 @@ if (choice === 'Template') {
 		],
 		limitMessage: chalk`{red -- Input valid name of a knitout (.k) file that exists in either the 'knit-out-files' or 'knit-in-files' folder, please.}`,
 	});
+
+	
 	if (isNumeric(needle_count)) {
 		needle_count = Number(needle_count);
 		console.log(chalk.green(`-- Needle count: ${needle_count}`));
