@@ -1,0 +1,3 @@
+[submodule "knitout-image-processing"]
+	path = knitout-image-processing
+	url = https://github.com/gabrielle-ohlson/knitout-image-processing
