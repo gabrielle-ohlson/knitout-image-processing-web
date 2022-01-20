@@ -229,36 +229,6 @@ function pick(pos, state, dispatch) {
 }
 
 
-// function postFile(data) {
-// 	var xhr = new XMLHttpRequest();
-// 	xhr.open("POST", yourUrl, true);
-// 	xhr.setRequestHeader('Content-Type', 'application/json');
-// 	xhr.send(JSON.stringify({
-// 		value: canvas.toDataURL("image/png").replace("image/png", "image/octet-stream");  // here is the most important part because if you dont replace you will get a DOM 18 exception.
-// 	}));
-
-
-// 	// define data and connections
-// 	var blob = new Blob([JSON.stringify(data)]);
-// 	var url = URL.createObjectURL(blob);
-// 	var xhr = new XMLHttpRequest();
-// 	xhr.open('POST', '/download', true);
-
-// 		// define new form
-// 	var formData = new FormData();
-// 	formData.append('someUploadIdentifier', blob, 'someFileName.json');
-		
-// 		// action after uploading happens
-// 	xhr.onload = function(e) {
-// 		console.log("File uploading completed!");
-// 	};
-
-// 		// do the uploading
-// 	console.log("File uploading started!");
-// 	xhr.send(formData);
-// }
-
-
 class SaveButton {
 	constructor(state) {
 		this.picture = state.picture;
@@ -270,22 +240,6 @@ class SaveButton {
 		let canvas = elt("canvas");
 		drawPicture(this.picture, canvas, 1);
 
-		let cx = canvas.getContext("2d");
-
-		let imageData = cx.getImageData(0, 0, canvas.width, canvas.height);
-
-		console.log(imageData);
-		let data = imageData.data;  // ArrayBuffer
-		let buffer = new ArrayBuffer(data.length);
-
-		let binary = new Uint8Array(buffer);
-		for (let i=0; i<binary.length; ++i) {
-			binary[i] = data[i];
-		}
-
-		console.log(buffer);
-		console.log('!');
-		console.log(binary);
 		// let save_form = elt("form", {
 			// 	href: canvas.toDataURL(),
 			// 	download: "pixelart.png"
@@ -293,21 +247,14 @@ class SaveButton {
 		// document.getElementById('my_hidden').value = canvas.toDataURL('image/png');
 		// document.forms["form1"].submit();
 
-		// let dataUrl = canvas.toDataURL("image/png").replace("image/png", "image/octet-stream"); // here is the most important part because if you dont replace you will get a DOM 18 exception.
-
-		// let buffer = Buffer.from(dataUrl.split(",")[1], 'base64');
 		let xhr = new window.XMLHttpRequest();
-		// xhr.setRequestHeader('Content-Type', 'application/json;charset=UTF-8');
-		// let formData = new FormData();
-		// formData.append('drawing', data);
+
 		xhr.open('POST', '/download', true);
-		// xhr.send(buffer);
 
 		// action after uploading happens
 		xhr.onload = function(e) {
 			console.log("File uploading completed!");
-			// Simulate an HTTP redirect:
-			// Simulate a mouse click:
+
 			window.location.href = '/download';
 		};
 
@@ -319,17 +266,6 @@ class SaveButton {
 			// Post via axios or other transport method
 			xhr.send(formData);
 		});
-		// xhr.setRequestHeader('Content-Type', 'application/json');
-		// xhr.send(formData);
-		// xhr.send({drawing: data});
-		
-		// let link = elt("a", {
-		// 	href: canvas.toDataURL(),
-		// 	download: "pixelart.png"
-		// });
-		// document.body.appendChild(link);
-		// link.click();
-		// link.remove();
 	}
 	syncState(state) { this.picture = state.picture; }
 }

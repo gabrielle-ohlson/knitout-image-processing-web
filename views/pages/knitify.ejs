@@ -35,7 +35,7 @@
 				<div id="colorworkImage" class="imgContainer" style="display:block">
 					<h2>Colorwork Image</h2>
 					<label for="colFile" class="file load empty" id="colInFileHolder">
-						<input type="file" class="fileInput" id="colFile" name="colFile" value="" style="display:none">
+						<input type="file" class="fileInput" id="colFile" name="colFile" value="" style="display:none" required />
 						<div id="inFileName"></div> <!-- TODO: add this (also probably class instead ?) -->
 					</label>
 					<p>
@@ -55,7 +55,7 @@
 				<div id="stitchImage" class="imgContainer" style="display:none">
 					<h2>Stitch Pattern Image</h2>
 					<label for="stFile" class="file load empty" id="stInFileHolder">
-						<input type="file" class="fileInput" id="stFile" name="stFile" style="display:none">
+						<input type="file" class="fileInput" id="stFile" name="stFile" style="display:none" />
 						<div id="inFileName"></div>
 					</label>
 					<p>
@@ -65,7 +65,7 @@
 			</div>
 			<div class="specs" id="col-specs" style="display:block">
 				<label id="MaxColorsLabel" for="MaxColors">Max colors:</label>
-				<input type="number" min="1" max="6" oninput="validity.valid||(value='');" onchange="adjustPalSize(this.value)" id="MaxColors" name="MaxColors" step=1 size=6 value=2 />
+				<input type="number" min="1" max="6" oninput="validity.valid||(value='');" onchange="adjustPalSize(this.value)" id="MaxColors" name="MaxColors" step=1 size=6 value=1 />
 				<br>
 				<label id="PaletteLabel" for="Palette">Palette:</label>
 				<span id="palContainer">
@@ -166,6 +166,7 @@
 				<input type="number" min="35" onblur="validity.valid||(value='');" id="WasteRows" name="WasteRows" step=1 size=4 value=40 />
 				<br>
 			</div>
+			<input type="hidden" id="stitchOptions" name="stitchOptions" />
 			<input id="submit-button" type="submit" value="Submit!" />
 		</form>	
 	</main>
@@ -192,7 +193,13 @@
 
 		let colorwork_img, needle_count = 'AUTO', row_count = 'AUTO', machine = 'kniterate', max_colors, dithering = false, palette_opt, stitch_number, speed_number, caston_carrier, wasteSettings, back_style = 'Secure', rib_info, st_pat_img, stitchPatterns = [];
 
-		// let colFileInput = document.getElementById('colFile');
+		let carriers = ['1']; //for now
+
+		let colFileInput = document.getElementById('colFile');
+		let stFileInput = document.getElementById('stFile');
+		let needleCountInput = document.getElementById('NeedleCount');
+		let rowCountInput = document.getElementById('RowCount');
+
 		let fileInputs = document.querySelectorAll('.fileInput');
 
 		let colorworkImageContainer = document.getElementById('colorworkImage');
@@ -231,18 +238,65 @@
 		}
 
 
+		function stitchOnly() {
+			if (stFileInput.value) colFileInput.required = false;
+
+			if (colFileInput.value) {
+				needleCountInput.required = false;
+				rowCountInput.required = false;
+			} else { //require needle and row
+				needleCountInput.required = true;
+				rowCountInput.required = true;
+			}
+		}
+
+
+		let stitch_pat_cols = [];
+
+
+		function getStitchColors(img) {
+			console.log('img:', img.src);
+			let colors = [];
+			// convert image to canvas
+			let canvas = document.createElement('canvas');
+			// Get convas information
+			canvas.width = img.width;
+			canvas.height = img.height;
+			canvas.getContext('2d').drawImage(img, 0, 0);
+			// Find the click pixel color information
+
+			console.log(canvas.toDataURL());
+
+		
+			for (let y = 0; y < canvas.height; ++y) {
+				for (let x = 0; x < canvas.width; ++x) {
+					let px = canvas.getContext('2d').getImageData(x, y, 1, 1).data;
+					let rgb = `${px[0]}, ${px[1]}, ${px[2]}`;
+
+					if (rgb !== `255, 255, 255` && !colors.includes(rgb)) colors.push(rgb);
+				}
+			}
+			
+			console.log('colors:', colors, typeof colors, colors.length); //remove //debug
+			return colors;
+		}
+
+
 		let palContainer = document.getElementById('palContainer');
 		
+
 		function adjustPalSize(colCount) {
 			colCount = Number(colCount);
 
 			let palInputCount = palContainer.childElementCount;
 			
-			if (colCount > palInputCount) { //
+			if (colCount > palInputCount) {
 				let inputClone = palContainer.querySelector('.palInput').cloneNode(true);
 				inputClone.querySelector('input').value = '';
 				
 				for (let p = 0; p < (colCount-palInputCount); ++p) {
+					carriers.push(`${carriers.length+1}`);
+					
 					palContainer.appendChild(inputClone);
 					inputClone = inputClone.cloneNode();
 				}
@@ -260,9 +314,22 @@
 						palContainer.removeChild(palInputContainers[palInputContainers.length-1]);
 					}
 
+					carriers.pop();
 					--palInputCount;
 				}
 			}
+
+			let stitchPatCarriers = document.querySelectorAll('select.carrier');
+
+			stitchPatCarriers.forEach(el => {
+				let selectedC = el.value;
+				console.log('selectedC:', selectedC); //remove //debug
+				el.innerHTML = '';
+				for (let c = 0; c < carriers.length; ++c) {
+					el.innerHTML += `<option value="${carriers[c]}">${carriers[c]}</option>`
+				}
+				el.value = selectedC;
+			});
 		}
 
 
@@ -282,7 +349,7 @@
 		function readFile(file) {
 			let reader = new FileReader();
 			reader.onload = function() {
-				console.log(this.result);
+				// console.log(this.result); //remove //debug
 
 				// let arrayBuffer = this.result;
         // let bytes = new Uint8Array(arrayBuffer);
@@ -297,23 +364,36 @@
 
 		fileInputs.forEach(el => {
 			el.addEventListener('change', (evt) => {
+				stitchOnly(); //TODO: check
 				let imgContainer = el.closest('.imgContainer');
 				let inFileHolder = el.closest('label');
 
 				let file_img = el.files[0];
 
-				let imgNode = document.createElement('img');
+				let imgNode = new Image();
 
-				let imgUrl = URL.createObjectURL(file_img)
+				let imgUrl = URL.createObjectURL(file_img);
 
 				imgNode.src = imgUrl;
+
+				imgNode.onload = function () {
+					if (el.id === 'stFile') {
+						stitch_pat_cols = getStitchColors(this); //new 
+						let specsTable = document.getElementById('stitch-specs-table');
+						specsTable.classList.remove('specified');
+						specsTable.innerHTML = '<tr class="columns"><td></td></tr>'; //reset
+						specify(document.querySelector('.option#stitch-patterns'));
+					}
+				};
 				
-				console.log('imgNode:', imgNode.src); //remove //debug
+				// console.log('imgNode:', imgNode.src); //remove //debug
 				readFile(file_img);
 
 				// el.value = imgBuffer;
 
 				inFileHolder.style.backgroundImage = `url('${imgUrl}')`;
+
+				
 
 				// console.log('imgBuffer:', imgBuffer);
 
@@ -327,23 +407,46 @@
 			});
 		});
 
-		let carriers = ['1', '2', '3']; //TODO: change this
-
-		let stitch_pat_cols = 3;
-
 		let stitch_pat_opts = ['Rib', 'Garter', 'Bubbles', 'Seed', 'Lace', 'Horizontal Buttonholes'];
-		let patCustomizations = {
-			'rib': {'front sequence': 1, 'back sequence': 1}, //TODO: add option for default
-			'garter': {'pattern rows': 2},
-			'bubbles': {'bubble width': 5, 'bubble height': 8, 'overlap width': 1},
-			'lace': {'pattern rows': 2, 'stitches btw holes': 1, 'hole offset': 1, 'offset reset': 0}
 
+		let patCustomizations = {
+			'Rib': {'sequence': 'fb'}, //TODO: add option for default
+			'Garter': {'patternRows': 2},
+			'Bubbles': {'bubbleWidth': 5, 'bubbleHeight': 8, 'overlap': 1},
+			'Lace': {'patternRows': 2, 'stitchesBtwHoles': 1, 'holeOffset': 1, 'offsetReset': 0}
 		};
 
+		let stitchOptions = {}; //new //*
 
-		function labelToTag(label) {
-			return label.toLowerCase().replace(/ /g, '-');
+		
+		function labelToCamelCase(label) {
+			let words = label.toLowerCase().split(' ');
+			let word1 = words.shift();
+			words = words.map(w => w = w.slice(0, 1).toUpperCase() + w.slice(1));
+			words.unshift(word1);
+			words = words.join('');
+
+			return words;
 		}
+
+
+		function labelToTag(label, camelCase) {
+			if (!label.includes(' ')) {
+				if (camelCase) return label;
+				else return label.toLowerCase();
+			}
+				// if (!camelCase || !label.includes('-')) return label;
+			
+			if (camelCase) return labelToCamelCase(label);
+			else return label.toLowerCase().replace(/ /g, '-');
+		}
+
+
+		function tagToLabel(tag) {
+			if (tag.includes('-')) return tag.replace(/-/g, ' ');
+			else return tag.replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase();
+		}
+
 
 		function dropDownChangeListener(listen_to, to_change, new_content) {
 			if (listen_to) {
@@ -355,6 +458,7 @@
 		}
 
 		function createDropdown(opts, default_label) {
+			console.log('!', default_label, opts); //remove //debug
 			if (!opts) return; //new //*
 			let dropDownHtml = '';
 			// if (typeof opts[0] === 'object') dropDownHtml += `<div display="grid">`;
@@ -369,27 +473,18 @@
 			// if (default_label) dropDownHtml += `<label for="${labelToTag(default_label)}">${default_label}</label>`;
 			// else default_label = opts[0];
 			dropDownHtml += `<select name="${labelToTag(default_label)}" class="${labelToTag(default_label)}">`; //size="4"
-			// let dropDownHtml = `<div class='dropdown'><a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false"><span class="glyphicon glyphicon-info-sign"></span> Stitch Patterns <span class="caret"></span></a><ul class="dropdown-menu" role="menu">`;
 
 			// for (let i = 0; i < opts.length; ++i) {
 			for (let opt of opts_arr) {
-				// let default_value;
-				dropDownHtml += `<option value="${labelToTag(opt)}"><button>${opt}</button></option>`;
-				// let label = (typeof opts[i] === 'object' ? opts[i][0] : opts[i]);
-				// if (typeof opts[i] === 'object') {
-				// 	dropDownHtml += `<option><label for "${labelToTag(opts[i][0])}">${opts[i][0]}:"</label><input type="text" id="${labelToTag(opts[i][0])}" name="${labelToTag(opts[i][0])}" value="${opts[i][1]}" /></option>`;
-				// } else dropDownHtml += `<option value="${labelToTag(opts[i])}">${opts[i]}</option>`;
-				// dropDownHtml += `<option value="${labelToTag(label)}"><button>${label}</button></option>`;
-				// dropDownHtml += `<li><button>${opts[i]}</button></li>`
+				dropDownHtml += `<option value="${opt}"><button>${tagToLabel(opt)}</button></option>`;
 			}
 
 			dropDownHtml += `</select></form>`; // <input type="submit" value="Submit" />
 
 			if (!Array.isArray(opts)) {
 				let opt1 = Object.entries(opts)[0];
-				dropDownHtml += `<div class="input-value"><input size="1" type="text" id="${labelToTag(opt1[0])}" name="${labelToTag(opt1[0])}" value="${opt1[1]}" /></div></div>`
+				dropDownHtml += `<div class="input-value"><input size="1" type="text" id="${labelToTag(opt1[0], true)}" name="${labelToTag(opt1[0], true)}" value="${opt1[1]}" /></div></div>`
 			}
-			// dropDownHtml += `</select></ul></div>`;
 
 			return dropDownHtml;
 		}
@@ -398,7 +493,6 @@
 			let opt = optEl.innerText;
 
 			document.querySelector('.nav').querySelectorAll('li').forEach(el => {
-				console.log(el);
 				if (el.contains(optEl)) el.classList.add('active');
 				else el.classList.remove('active');
 			});
@@ -450,16 +544,21 @@
 
 					columns['Stitch Pattern Name'] = createDropdown(stitch_pat_opts, 'Stitch Pattern Name');
 
-					columns['Mapped Color'] = `<input type='text' class='mapped-color' name='mapped-color' />`;
+					// columns['Mapped Color'] = `<input type='text' class='mapped-color' name='mapped-color' />`;
 
 					columns['Carrier'] = createDropdown(carriers, 'Carrier');
+
+					columns['Mapped Color'] = `<input type='hidden' class='mapped-color' name='mapped-color' />`;
 
 					columns['Customizations'] = function() {
 						let stitchPatCols = document.querySelectorAll('input.mapped-color');
 						let stitchPatCarriers = document.querySelectorAll('select.carrier');
 
 						for (let i = 0; i < stitchPatCols.length; ++i) {
+							stitchPatCols[i].style.display = 'none';
 							stitchPatCols[i].name = `mapped-color-${i+1}`;
+							stitchPatCols[i].value = `[${stitch_pat_cols[i]}]`; //new //*
+
 						}
 
 						for (let i = 0; i < stitchPatCarriers.length; ++i) {
@@ -468,48 +567,58 @@
 
 						let stitchPatNames = document.querySelectorAll('select.stitch-pattern-name');
 
+
+						function customizationTable(el, row_parent) {
+							console.log('#', el); //remove //debug
+							row_parent.querySelector('div.customizations').innerHTML = createDropdown(patCustomizations[el.value], 'customizations-table');
+
+							let customTable = row_parent.querySelector('select.customizations-table');
+
+							customTable.name = `customizations-table-${el.dataset.idx}`;
+
+							stitchOptions[el.dataset.idx] = Object.assign({}, patCustomizations[el.value]); //new //*
+
+							let customInput = row_parent.querySelector('div.input-value > input');
+							
+							customInput.addEventListener('change', function() {
+								stitchOptions[el.dataset.idx][customTable.value] = Number(customInput.value); //new //*
+							});
+
+							customTable.addEventListener('change', function() {
+								customInput.id = `${customTable.value}`;
+								customInput.value = `${	stitchOptions[el.dataset.idx][customTable.value]}`;
+							});
+						}
+
 						if (stitchPatNames) {
 							let spIdx = 1;
 							stitchPatNames.forEach((el) => {
 								el.name = `stitch-pattern-name-${spIdx}`;
+								el.dataset.idx = spIdx; //new //*
 								
 								let row_parent = el.closest('tr');
 
+								customizationTable(el, row_parent); //initial one
+
 								el.addEventListener('change', function() {
-									row_parent.querySelector('div.customizations').innerHTML = createDropdown(patCustomizations[el.value], 'customizations-table');
-
-									let customTable = row_parent.querySelector('select.customizations-table');
-
-									customTable.name = `customizations-table-${spIdx}`;
-
-									let customInput = row_parent.querySelector('div.input-value > input');
-									
-									customInput.addEventListener('change', function() {
-										patCustomizations[el.value][customTable.value.replace(/-/g, ' ')] = Number(customInput.value);
-									});
-
-									customTable.addEventListener('change', function() {
-										// el.querySelector('.input-value').innerHTML = `<input type="text" value="${patCustomizations[customTable.querySelector('select').value]} />`;
-										customInput.id = `${customTable.value}`;
-										customInput.value= `${patCustomizations[el.value][customTable.value.replace(/-/g, ' ')]}`;
-
-										// row_parent.querySelector('.input-value').innerHTML = `<input size="1" type="text" id="${customTable.value}" value="${patCustomizations[el.value][customTable.value.replace(/-/g, ' ')]}" />`;
-										// to_change.innerHTML = createDropdown(patCustomizations[el.value], 'Customizations');
-									});
+									if (el.value in patCustomizations) customizationTable(el, row_parent); //initial one
+									else {
+										delete stitchOptions[el.dataset.idx];
+										row_parent.querySelector('div.customizations').innerHTML = 'None.';
+									}
 								});
 								spIdx += 1;
 							});
-
 						}
 						
 					}; //will be updated if something is selected
 
-					if (stitch_pat_cols) {
-						for (let i = 1; i <= stitch_pat_cols; ++i) {
-							row_labels.push(`Stitch Pattern #${i}:`);
+
+					if (stitch_pat_cols.length) {
+						for (let i = 0; i < stitch_pat_cols.length; ++i) {
+							row_labels.push(`<span style="color: rgb(${stitch_pat_cols[i]})">Stitch Pattern #${i+1}:<span>`); //TODO: add rgb to dataset
 						}
 					}
-					// document.getElementById('specs').innerHTML = `<div>stitch specs</div>`;
 				}
 
 				let c = 1;
@@ -517,6 +626,11 @@
 					let column = colHeader.insertCell(c);
 					column.id = labelToTag(col);
 					column.innerHTML = `<b>${col}</b>`;
+
+					if (typeof columns[col] === 'string') console.log(columns[col], columns[col].includes("type='hidden'"));
+
+					if (typeof columns[col] === 'string' && columns[col].includes("type='hidden'")) column.style.display = 'none';
+
 					c += 1;
 				}
 
@@ -531,12 +645,13 @@
 					for (let col in columns) {
 						cells[r].push(row.insertCell(c));
 						cells[r][c].classList.add(`${labelToTag(col)}`);
+
+						if (typeof columns[col] === 'string' && columns[col].includes("type='hidden'")) cells[r][c].style.display = 'none';
+
 						if (typeof columns[col] === 'function') {
-							// cells[r][c].innerHTML  = `<div id="${labelToTag(col)}-${c-1}"></div>`;
 							cells[r][c].innerHTML  = `<div class="${labelToTag(col)}"></div>`;
 							columns[col]();
 						} else cells[r][c].innerHTML = columns[col];
-						// cells[c].innerHTML = `<input type='text' />`
 						c += 1;
 					}
 				}
@@ -546,68 +661,44 @@
 		}
 
 
-		// document.getElementById('stitch-patterns').addEventListener('click', function() {
-		// 	if (!st_pat_img) {
-
-		// 	}
-		// })
-
-		// document.querySelectorAll('.option').forEach(function(el) {
-		// 	el.addEventListener('click', specify(el.innerText));
-		// });
-
 		document.querySelectorAll('.option').forEach(el => {
 			el.onclick = () => {
 				specify(el);
 			}
-			// ('click', specify(el.innerText));
 		});
 
-		function saveData() {
 
+	let uploadForm = document.getElementById('uploadForm');
+
+		function sendStitchPatCustoms(ev) {
+			// check if required fields are filled
+			for (let el of uploadForm.querySelectorAll("[required]")) {
+				if (!el.reportValidity()) {
+					let description = el.labels[0].innerText;
+
+					if (!description && el.labels[0].previousElementSibling) description = el.labels[0].previousElementSibling.innerText;
+
+					if (!description) description = tagToLabel(el.id);
+
+					alert(`'${description}' is a required field.`);
+					return;
+				}
+			}
+
+			let stitchOptionsInput = document.getElementById('stitchOptions');
+
+			stitchOptionsInput.value = JSON.stringify(stitchOptions);
 		}
 
-		function colorworkKnitout() {
-			saveData();
+			let submitButton = document.getElementById('submit-button');
 
-			/*
-			Colorwork Image:
-			- colorwork_img,
-			- back_style,
-			- needle_count,
-			- row_count,
-			- max_colors,
-			- dithering,
-			- palette_opt
+			submitButton.addEventListener('click', sendStitchPatCustoms);
 
-			Extensions & Specs:
-			- machine,
-			- stitch_number,
-			- speed_number,
-			- caston_carrier
-			- wasteSettings
 
-			Rib:
-			- rib_info
+			// uploadForm.addEventListener('submit', sendStitchPatCustoms);
 
-			Stitch Patterns:
-			- st_pat_img
-			- stitchPatterns
 
-			*/
-				
-					
-				
-			// console.log('!', colFileInput.files[0]);
-			
-			// function process(img_buffer, needle_count, row_count, machine, max_colors, dithering, palette_opt, stitch_number, speed_number, caston_carrier, wasteSettings, back_style, rib_info, stImg, stitchPats)
-
-			// console.log(colorwork_knitout);
-		}
-
-		// let submitButton = document.getElementById('submit-button');
-
-		// submitButton.addEventListener('click', colorworkKnitout);
+		
 
 	</script>
 </html>

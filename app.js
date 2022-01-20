@@ -37,7 +37,6 @@ const chalk = require('./public/src/utils/chalk');
 
 const webify = require('./public/src/utils/webify');
 
-console.log('init!'); //remove //debug
 
 app.locals.shape_knitout = undefined;
 app.locals.logMessages = [];
@@ -72,12 +71,18 @@ let colorwork_img, needle_count, row_count, machine = 'kniterate', max_colors = 
 let inc_method = 'xfer', xfer_speed_number = 300;
 
 class StitchPattern {
-	constructor(name, hex, carrier) {
+	constructor(name, rgb, carrier, options) {
 		this.name = name;
-		this.color = hex;
+		this.color = rgb;
 		this.carrier = carrier;
-		this.options = {};
+		this.options = options;
 	}
+	// constructor(name, hex, carrier, options) {
+	// 	this.name = name;
+	// 	this.color = hex;
+	// 	this.carrier = carrier;
+	// 	this.options = options;
+	// }
 }
 
 
@@ -108,9 +113,7 @@ class StitchPattern {
 			*/
 
 app.post('/download', function(req, res, next) {
-	console.log('post download');
-	console.log('colorwork_knitout' in req.app.locals);
-	console.log(req.app.locals.colorwork_knitout); //remove //debug
+	console.log('post to download...'); //debug
 	// let sampleFile;
   // let uploadPath;
 
@@ -136,7 +139,6 @@ app.post('/download', function(req, res, next) {
 
 
 	if (req.app.locals.colorwork_knitout) { //already processed knitout, but alteration was made to shape (or need to process shape now)
-		console.log('!!!!', req.files); //remove //debug
 		if (req.files && 'drawing' in req.files) {
 			shape_img = req.files.drawing.data;
 
@@ -174,8 +176,6 @@ app.post('/download', function(req, res, next) {
 
 		// shape_knitout = shape.generateKnitout(in_file, shape_code, shape_code_reverse, shortrow_code, short_row_section, first_short_row, last_short_row, section_count, shape_error, shape_err_row, inc_method, xfer_speed_number, webify.console, chalk);
 
-		console.log('shape_knitout:'); //remove //debug
-
 		getShapeKnitout()
 			.then((result) => {
 				shape_knitout = result;
@@ -200,17 +200,18 @@ app.post('/download', function(req, res, next) {
 
 		// return res.render('pages/download', {colorwork_knitout:colorwork_knitout, shape_knitout:shape_knitout, logMessages:logMessages});
 	} else {
-		console.log('other...'); //remove //debug
+		console.log('initial processing of input imgs...'); //remove //debug
 		if (req.files) {
 			// console.log(req.files, req.files.colFile); //remove //debug
 			if ('colFile' in req.files) colorwork_img = req.files.colFile.data;
 			
 			if ('stFile' in req.files) {
-				let stFile = req.files.stFile;
-				st_pat_img = `./public/images/${st_pat_img.name}`;
-				stFile.mv(st_pat_img, function(err) {
-					if (err) return res.status(500).send(err);
-				});
+				st_pat_img = req.files.stFile.data;
+				// let stFile = req.files.stFile;
+				// st_pat_img = `./public/images/${stFile.name}`;
+				// stFile.mv(st_pat_img, function(err) {
+				// 	if (err) return res.status(500).send(err);
+				// });
 			}
 
 			if ('shapeFile' in req.files) shape_img = req.files.shapeFile.data;
@@ -222,8 +223,6 @@ app.post('/download', function(req, res, next) {
 					delete req.body[key];
 				}
 			});
-
-			// console.log(req.body); //remove //debug
 
 			if ('BackStyle' in req.body) back_style = req.body.BackStyle;
 			if ('NeedleCount' in req.body) needle_count = req.body.NeedleCount;
@@ -256,12 +255,20 @@ app.post('/download', function(req, res, next) {
 			}
 
 			if (st_pat_img) {
-				let stitchNames = Object.keys(req.body).filter(el => el.includes('StitchPatternName'));
-				let stitchMapCols = Object.keys(req.body).filter(el => el.includes('MappedColor'));
-				let stitchCarriers = Object.keys(req.body).filter(el => el.includes('Carrier'));
+				// let stitchNames = Object.keys(req.body).filter(el => el.includes('StitchPatternName'));
+				let stitchNames = Object.keys(req.body).filter(el => el.includes('stitch-pattern-name'));
+				let stitchMapCols = Object.keys(req.body).filter(el => el.includes('mapped-color'));
+				let stitchCarriers = Object.keys(req.body).filter(el => el.includes('carrier'));
+
+				let stitchOptions = JSON.parse(req.body.stitchOptions);
+
+				console.log(stitchMapCols); //remove //debug
 
 				for (let s = 0; s < stitchNames.length; ++s) {
-					stitchPatterns.push(StitchPattern(req.body[stitchNames[s]], req.body[stitchMapCols[s]], req.body[stitchCarriers[s]]));
+					console.log((req.body[stitchMapCols[s]])); //remove //debug
+					let options = {};
+					if (`${s+1}` in stitchOptions) options = stitchOptions[`${s+1}`]; //new //*
+					stitchPatterns.push(new StitchPattern(req.body[stitchNames[s]], JSON.parse(req.body[stitchMapCols[s]]), req.body[stitchCarriers[s]], options));
 				}
 			}
 		}
@@ -275,10 +282,6 @@ app.post('/download', function(req, res, next) {
 				colorwork_knitout = result[0];
 				needle_count = result[1];
 				row_count = result[2];
-				// console.log('!', colorwork_knitout); //remove //debug
-				// console.log('needle_count:');
-				// console.log(needle_count);
-				// console.log(row_count); //remove //debug
 			});
 		}
 
@@ -371,7 +374,7 @@ app.post('/download', function(req, res, next) {
 
 app.get('/download', function(req, res) {
 	if (res.app.locals.colorwork_knitout) {
-		console.log('download...'); //remove //debug
+		console.log('get download page...'); //remove //debug
 		webify.set_locals(app);
 
 		return res.render('pages/download');
@@ -422,7 +425,7 @@ app.get('/', (req, res) => {
 
 
 app.get('/draw', (req, res) => {
-	console.log('draw...'); //remove //debug
+	console.log('get draw page...'); //remove //debug
 	res.render('pages/draw');
 	// res.render('pages/draw', {picPath:'/images/out-shape-images/shape_code.png', motif:motif_path});
 });

@@ -12,7 +12,6 @@ const {console, true_console_log} = require('../utils/webify');
 // let palette, reduced;
 let colors_arr = [];
 let stitchOnly = false;
-let stData;
 
 let resized_width, resized_height;
 // let pal_hist = [];
@@ -206,6 +205,9 @@ function resizeImg(img, needle_count, row_count) {
 		row_count ? row_count = Number(row_count): row_count = Jimp.AUTO;
 
 		if (img) {
+			console.log('img:'); //remove //debug
+			console.log(img);
+
 			Jimp.read(img, (err, image) => {
 				if (err) throw err;
 
@@ -265,18 +267,19 @@ function resolvePromises(img, needle_count, row_count, palette_opts, stImg, stit
 			
 		// });
 		resize.then((resized_img) => {
+			console.log('resized!'); //remove //debug
 			// console.log(resized_img); //remove //debug
 			getData(resized_img, palette_opts).then((result) => {
 				colors_arr = result;
-				resolve(result);
+				// resolve(result);
 				// return result; //?
 			}).then(() => {
 			// if (stitchOnly) fs.renameSync('./out-colorwork-images/stitch.png', './out-colorwork-images/colorwork.png');
 
 				if (stitchPats.length) {
 					const stitchPatterns = require('./stitch-pattern.js');
-					stitchPatterns.getStitchData(stImg, stitchPats).then((data) => {
-						stData = data;
+					stitchPatterns.getStitchData(resized_height, resized_width, stImg, stitchPats).then((data) => {
+						// stData = data;
 						resolve(data); //?
 					});
 				} else resolve();
@@ -298,11 +301,15 @@ function process(img_path, needle_count, row_count, machine, max_colors, ditheri
 		let palette_opts = palOptions(max_colors, dithering, palette_opt);
 
 		resolvePromises(img_path, needle_count, row_count, palette_opts, stImg, stitchPats)
-		.then(() => {
+		.then((result) => {
+			let stData = result; //might be undefined if no result
 			let colors_data = colors_arr.pop();
 			let background = colors_arr.pop();
 			let color_count = colors_arr.pop().length;
 			colors_arr = colors_arr.reverse();
+			
+			console.log(stData);
+			console.log('stData:'); //remove //debug
 
 			knitout = colorwork.generateKnitout(machine, colors_data, background, color_count, colors_arr, stitch_number, speed_number, caston_carrier, wasteSettings, back_style, rib_info, stitchOnly, stData, console, chalk);
 

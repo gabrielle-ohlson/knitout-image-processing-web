@@ -1,3 +1,4 @@
 
-Carrier 1: #29511b
-Carrier 2: #fcfcfb
+Carrier 1: #0000ff
+Carrier 2: #566746
+Carrier 3: #719bed
