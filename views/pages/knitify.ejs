@@ -253,6 +253,22 @@
 
 		let stitch_pat_cols = [];
 
+		function closest_color(colors, [r2, g2, b2]) {
+			let colors_arr = (typeof colors[0] === 'string') ? colors.map(c => c.split(', ')) : colors;
+			// if (typeof colors[0] === 'string') 
+
+			let [[closest_color_id]] = (
+				colors_arr
+				.map(([id, r1,g1,b1]) => (
+					[id, Math.sqrt((r2-r1)**2 + (g2-g1)**2 + (b2-b1)**2)]
+				))
+				.sort(([, d1], [, d2]) => d1 - d2)
+			);
+			let closest_color = colors_arr.find(([id]) => id == closest_color_id);
+
+			if (typeof colors[0] === 'string') return closest_color.join(', ');
+			else return closest_color;
+		}
 
 		function getStitchColors(img) {
 			console.log('img:', img.src);
@@ -278,6 +294,11 @@
 			}
 			
 			console.log('colors:', colors, typeof colors, colors.length); //remove //debug
+
+			if (!colors.includes('255, 255, 255')) { //white wasn't found, so let's find the closest color
+				let closest_to_white = closest_color(colors, [255, 255, 255]);
+				colors.splice(colors.indexOf(closest_to_white), 1);
+			}
 			return colors;
 		}
 
