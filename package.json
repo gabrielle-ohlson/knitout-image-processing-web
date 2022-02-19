@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "A command-line program to process images and output knitting machine instructions for color work--written in CMU Textiles Lab's machine independent language, knitout.",
   "engines": {
-    "node": ">=11.15.0"
+    "node": ">=14.19.0"
   },
   "main": "app.js",
   "scripts": {
